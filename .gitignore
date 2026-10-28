@@ -1,0 +1,16 @@
+data/
+mlruns/
+mlflow/
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+node_modules/
+.next/
+.cache/
+*.zip
+CLAUDE.md
+.claude/
