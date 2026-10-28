@@ -7,6 +7,11 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "dagster>=1.13.27",
+    "dagster-webserver>=1.13.27",
+    "datasets>=5.1.0",
+    "duckdb>=2.0.0",
+    "polars>=2.1.0",
     "pydantic-settings>=2.16.2",
 ]
 
@@ -16,6 +21,8 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "marimo>=0.25.2",
+    "matplotlib>=3.11.2",
     "pre-commit>=4.7.0",
     "pyright>=1.1.414",
     "pytest>=9.2.0",
@@ -41,3 +48,7 @@ testpaths = ["tests"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["rabbithole"]
+
+[tool.ruff.lint.per-file-ignores]
+# marimo renders a cell's last bare expression as its output
+"**/notebooks/*.py" = ["B018"]

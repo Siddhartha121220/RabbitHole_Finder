@@ -14,3 +14,4 @@ node_modules/
 *.zip
 CLAUDE.md
 .claude/
+.dagster/

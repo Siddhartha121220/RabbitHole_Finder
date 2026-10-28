@@ -29,7 +29,7 @@ Edge table: only `type = 'link'` rows where both ends are in the article subset.
 
 ### 1.3 Article subset
 - **DEV (~5,000 articles):** pick 25 diverse seed articles (history, science, music, games, sports, food, programming, cricket, mythology, etc.), BFS over clickstream link edges by highest n until ~5,000 articles. Deterministic given the seed list (store it in `backend/src/rabbithole/ingest/dev_seeds.py`).
-- **FULL:** articles with `views_in ≥ 1,000` in the most recent month, excluding `Main_Page`, disambiguation pages, lists (`List_of_*`) and date/year pages. Expect ~100k–300k articles; log the count. Make the threshold configurable.
+- **FULL:** articles with `views_in ≥ 1,000` in the feature month (the oldest downloaded month; later months are LTR label months, see DECISIONS.md), excluding `Main_Page`, disambiguation pages, lists (`List_of_*`) and date/year pages. Expect ~100k–300k articles; log the count. Make the threshold configurable.
 
 ### 1.4 Hardware assumption
 Typical student laptop: 16 GB RAM, no GPU. Everything must run on CPU. Embedding FULL mode may take an hour on CPU; allow an optional path to run the embedding step on a free Colab/Kaggle GPU (export a Parquet of texts, import a Parquet of vectors).

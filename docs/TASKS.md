@@ -20,16 +20,16 @@ Rough timeline for a student working part-time with Claude Code: 5–7 weeks.
 **Acceptance:** `make setup && make up && make lint && make test` all succeed on a clean clone; one trivial test passes; CI green.
 
 ## Phase 1 — Ingestion & EDA
-- [ ] Clickstream: list available months, download (with size check), parse with DuckDB → `clickstream_<month>.parquet`.
-- [ ] Title normalization + `article_id` mapping; exclusion rules (DATA_AND_ML §1.3).
-- [ ] DEV subset builder (deterministic BFS from `dev_seeds.py`); FULL subset with threshold.
-- [ ] Per-article stats and edges tables (§1.1).
-- [ ] Article text: DEV via MediaWiki API (cached, polite); FULL via HF streaming (implement, run later).
-- [ ] Chunking (≈ 300 tokens, 50 overlap, keep section titles).
-- [ ] Dagster assets for all of the above; `make pipeline-dev` materializes them.
-- [ ] Data quality checks (Dagster asset checks): no null titles, n > 0, p rows sum to ~1, text match rate ≥ 90%.
-- [ ] Notebook `notebooks/01_eda.*`: distributions (views, onward_ratio, degree), top transitions, entry sources share. Save key charts to `reports/figures/`.
-- [ ] Tests on a tiny fixture clickstream (≈ 30 rows).
+- [x] Clickstream: list available months, download (with size check), parse with DuckDB → `clickstream_<month>.parquet`.
+- [x] Title normalization + `article_id` mapping; exclusion rules (DATA_AND_ML §1.3).
+- [x] DEV subset builder (deterministic BFS from `dev_seeds.py`); FULL subset with threshold.
+- [x] Per-article stats and edges tables (§1.1).
+- [x] Article text: DEV via MediaWiki API (cached, polite); FULL via HF streaming (implement, run later).
+- [x] Chunking (≈ 300 tokens, 50 overlap, keep section titles).
+- [x] Dagster assets for all of the above; `make pipeline-dev` materializes them.
+- [x] Data quality checks (Dagster asset checks): no null titles, n > 0, p rows sum to ~1, text match rate ≥ 90%.
+- [x] Notebook `notebooks/01_eda.*`: distributions (views, onward_ratio, degree), top transitions, entry sources share. Save key charts to `reports/figures/`.
+- [x] Tests on a tiny fixture clickstream (≈ 30 rows).
 
 **Acceptance:** DEV parquet files exist with logged row counts; asset checks pass; EDA notebook runs top to bottom.
 

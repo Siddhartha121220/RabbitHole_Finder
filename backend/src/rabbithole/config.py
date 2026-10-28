@@ -1,10 +1,13 @@
 """Runtime settings, read from environment variables (and `.env` if present)."""
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
@@ -18,6 +21,10 @@ class Settings(BaseSettings):
     clickstream_months: str = ""
     mlflow_tracking_uri: str = "http://localhost:5000"
     wiki_user_agent: str = "RabbitHoleFinder/0.1 (student project; contact: <email>)"
+    data_dir: Path = REPO_ROOT / "data"
+    dev_target_articles: int = 5000
+    full_min_views: int = 1000
+    max_download_bytes: int = 2 * 1024**3
 
     @property
     def months(self) -> list[str]:
