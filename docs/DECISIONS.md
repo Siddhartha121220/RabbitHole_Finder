@@ -14,6 +14,6 @@ Newest last. Each entry: what we chose, what we rejected, why.
 - **Exclusions** (Main Page, disambiguation, lists, year/decade/date and "X in Y" year pages) are applied to BFS edges too, so they never enter the subset.
 - **DEV text = lead section only** via `prop=extracts|info` (20 titles per call; `info` gives page byte length for `content_richness`). Chunks in DEV are therefore lead-only. **Rejected** full-page extracts in DEV: the API returns one full extract per request, i.e. ~5,000 requests.
 - **Chunk size counted in words, not tokens** (~1.3 tokens/word). Avoids a tokenizer dependency; precise enough for retrieval.
-- MediaWiki API: ≥1 s between requests, exponential backoff honouring `Retry-After` on 429/503/maxlag, every response cached to `data/raw/wiki_api/`. We were heavily 429'd with the placeholder contact in `WIKI_USER_AGENT`; set a real contact in `.env`.
+- MediaWiki API: ≥1 s between requests, exponential backoff honouring `Retry-After` on 429/503/maxlag, every response cached to `data/raw/wiki_api/`. We were heavily 429'd with a placeholder contact in `WIKI_USER_AGENT`; it now points at the repo URL.
 - FULL-mode HF streaming lives in `ingest/hf_text.py` with pyright in basic mode, because `datasets` lacks complete type hints. Implemented, not yet run.
 - Added `marimo` (notebooks as plain `.py`, no stored outputs) and `matplotlib` (charts) as dev dependencies.

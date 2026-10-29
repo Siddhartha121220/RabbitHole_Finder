@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     dataset_mode: Literal["dev", "full"] = "dev"
     clickstream_months: str = ""
     mlflow_tracking_uri: str = "http://localhost:5000"
-    wiki_user_agent: str = "RabbitHoleFinder/0.1 (student project; contact: <email>)"
+    wiki_user_agent: str = "RabbitHoleFinder/0.1 (student project; https://github.com/Siddhartha121220/RabbitHole_Finder)"
     data_dir: Path = REPO_ROOT / "data"
     dev_target_articles: int = 5000
     full_min_views: int = 1000
