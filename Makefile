@@ -1,5 +1,5 @@
 UV := uv --directory backend
-.PHONY: setup up down lint test pipeline-dev pipeline dagster-ui api web eval
+.PHONY: setup up down lint test migrate pipeline-dev pipeline dagster-ui api web eval
 
 setup:
 	$(UV) sync
@@ -19,6 +19,9 @@ lint:
 
 test:
 	$(UV) run pytest -q
+
+migrate:
+	$(UV) run alembic upgrade head
 
 DAGSTER := mkdir -p .dagster && DAGSTER_HOME=$(CURDIR)/.dagster $(UV) run dagster asset materialize \
 	-m rabbithole.pipelines.definitions --select '*'

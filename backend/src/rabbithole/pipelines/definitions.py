@@ -4,9 +4,15 @@ from pathlib import Path
 from typing import Any
 
 import dagster as dg
+import numpy as np
 import polars as pl
 
 from rabbithole.config import REPO_ROOT, Settings, get_settings
+from rabbithole.db import loader
+from rabbithole.db.session import get_engine
+from rabbithole.embed import embeddings as emb
+from rabbithole.embed import umap_map
+from rabbithole.embed.search import search_articles
 from rabbithole.graph import communities as comm
 from rabbithole.graph import pruned, report
 from rabbithole.ingest import clickstream, hf_text, stats, subset, text
@@ -100,7 +106,32 @@ def report_path(settings: Settings, name: str) -> Path:
     return path
 
 
-@dg.asset(group_name="graph", deps=[edges, article_text])
+def vectors(df: pl.DataFrame) -> np.ndarray:
+    return df.sort("id")["embedding"].to_numpy()
+
+
+@dg.asset(group_name="embed", deps=[article_text])
+def article_embeddings() -> dg.MaterializeResult[Any]:
+    """Title + lead per article. Resumable shards; uses data/import/ vectors if present."""
+    settings = get_settings()
+    inputs = emb.article_inputs(pl.read_parquet(processed(settings, "article_text")))
+    emb.export_texts(inputs, "articles", settings)
+    return _write(
+        emb.embed_table(inputs, "articles", settings), processed(settings, "article_embeddings")
+    )
+
+
+@dg.asset(group_name="embed", deps=[chunks])
+def chunk_embeddings() -> dg.MaterializeResult[Any]:
+    settings = get_settings()
+    inputs = emb.chunk_inputs(pl.read_parquet(processed(settings, "chunks")))
+    emb.export_texts(inputs, "chunks", settings)
+    return _write(
+        emb.embed_table(inputs, "chunks", settings), processed(settings, "chunk_embeddings")
+    )
+
+
+@dg.asset(group_name="graph", deps=[edges, article_text, article_embeddings])
 def communities(context: dg.AssetExecutionContext) -> dg.MaterializeResult[Any]:
     """Leiden resolution sweep, final partition, labels, and the sanity-check reports."""
     settings = get_settings()
@@ -108,8 +139,8 @@ def communities(context: dg.AssetExecutionContext) -> dg.MaterializeResult[Any]:
     texts = pl.read_parquet(processed(settings, "article_text")).sort("article_id")
 
     g = comm.undirected_graph(e, texts.height)
-    vectors = comm.text_vectors(texts["lead_text"].to_list())
-    metrics = comm.sweep(g, settings.leiden_resolutions, vectors)
+    article_vecs = vectors(pl.read_parquet(processed(settings, "article_embeddings")))
+    metrics = comm.sweep(g, settings.leiden_resolutions, article_vecs)
     chosen = settings.leiden_resolution or comm.choose_resolution(metrics)
     context.log.info(f"Leiden resolution: {chosen:g}")
 
@@ -143,6 +174,115 @@ def edges_pruned() -> dg.MaterializeResult[Any]:
     return _write(
         pruned.prune(e, settings.prune_top_k, settings.hub_penalty),
         processed(settings, "edges_pruned"),
+    )
+
+
+@dg.asset(group_name="embed", deps=[article_embeddings, communities])
+def map_coords() -> dg.MaterializeResult[Any]:
+    """UMAP 2D positions for articles; communities sit at the mean of their members."""
+    settings = get_settings()
+    vecs = vectors(pl.read_parquet(processed(settings, "article_embeddings")))
+    membership = pl.read_parquet(processed(settings, "article_communities"))
+    xy = umap_map.umap_coords(vecs)
+    pl.DataFrame(
+        {
+            "article_id": membership.sort("article_id")["article_id"],
+            "umap_x": xy[:, 0],
+            "umap_y": xy[:, 1],
+        }
+    ).write_parquet(processed(settings, "article_map"))
+    return _write(
+        umap_map.community_geometry(membership, vecs, xy), processed(settings, "community_map")
+    )
+
+
+SEARCH_PROBES = [
+    "mechanical keyboard",
+    "Byzantine",
+    "cricket",
+    "black holes",
+    "sushi",
+    "conspiracy theories",
+]
+
+
+@dg.asset(group_name="serve", deps=[articles, map_coords, chunk_embeddings])
+def postgres(context: dg.AssetExecutionContext) -> dg.MaterializeResult[Any]:
+    """Migrate, then load communities, articles and chunks into Postgres (idempotent)."""
+    settings = get_settings()
+
+    def read(name: str) -> pl.DataFrame:
+        return pl.read_parquet(processed(settings, name))
+
+    comm_rows = (
+        read("communities")
+        .join(read("community_map"), on="community_id")
+        .select(
+            pl.col("community_id").alias("id"),
+            "label",
+            "size",
+            "eligible",
+            "keywords",
+            "central_article_id",
+            "top_article_ids",
+            "centroid",
+            "umap_x",
+            "umap_y",
+        )
+    )
+    art_rows = (
+        read("articles")
+        .select("article_id", "title", pl.col("views_in").alias("views"))
+        .join(read("article_text").select("article_id", "lead_text"), on="article_id")
+        .join(read("article_communities"), on="article_id")
+        .join(read("article_map"), on="article_id")
+        .join(read("article_embeddings").rename({"id": "article_id"}), on="article_id")
+        .select(
+            pl.col("article_id").alias("id"),
+            "title",
+            pl.col("title").map_elements(loader.wiki_url, return_dtype=pl.String).alias("url"),
+            "views",
+            "community_id",
+            "lead_text",
+            "embedding",
+            "umap_x",
+            "umap_y",
+        )
+        .sort("id")
+    )
+    chunk_rows = (
+        read("chunks")
+        .join(read("chunk_embeddings").rename({"id": "chunk_id"}), on="chunk_id")
+        .select(pl.col("chunk_id").alias("id"), "article_id", "ord", "text", "embedding")
+        .sort("id")
+    )
+
+    loader.migrate()
+    with get_engine().begin() as conn:
+        loader.load(
+            conn,
+            comm_rows,
+            art_rows,
+            chunk_rows,
+            {"dataset_mode": settings.dataset_mode, "months": clickstream.resolve_months(settings)},
+        )
+
+    # Acceptance probe: what does semantic search return for a few interests?
+    lines = [f"# Seed search probes ({settings.dataset_mode.upper()})\n"]
+    with get_engine().connect() as conn:
+        for q in SEARCH_PROBES:
+            hits = search_articles(conn, q, settings, k=5)
+            lines.append(f"## {q}\n")
+            lines += [f"- {h.title.replace('_', ' ')} ({h.similarity:.3f})" for h in hits]
+            lines.append("")
+    report_path(settings, "seed_search_probes").write_text("\n".join(lines))
+    context.log.info("\n".join(lines))
+    return dg.MaterializeResult(
+        metadata={
+            "articles": art_rows.height,
+            "communities": comm_rows.height,
+            "chunks": chunk_rows.height,
+        }
     )
 
 
@@ -194,6 +334,18 @@ def pruned_out_degree_and_costs() -> dg.AssetCheckResult:
     return _check(ok, max_out_degree=max_out, min_cost=min_cost)
 
 
+@dg.asset_check(asset=article_embeddings)
+def article_embeddings_complete() -> dg.AssetCheckResult:
+    settings = get_settings()
+    df = pl.read_parquet(processed(settings, "article_embeddings"))
+    n_ids = pl.read_parquet(processed(settings, "article_ids")).height
+    norms = np.linalg.norm(vectors(df), axis=1)
+    worst = float(np.abs(norms - 1).max())
+    return _check(
+        df.height == n_ids and worst < 1e-3, rows=df.height, expected=n_ids, max_norm_error=worst
+    )
+
+
 defs = dg.Definitions(
     assets=[
         clickstream_months,
@@ -204,6 +356,10 @@ defs = dg.Definitions(
         chunks,
         communities,
         edges_pruned,
+        article_embeddings,
+        chunk_embeddings,
+        map_coords,
+        postgres,
     ],
     asset_checks=[
         articles_titles_and_views,
@@ -211,5 +367,6 @@ defs = dg.Definitions(
         article_text_match_rate,
         every_article_in_one_community,
         pruned_out_degree_and_costs,
+        article_embeddings_complete,
     ],
 )

@@ -4,7 +4,7 @@
 
 Most recommenders optimise for *more of the same*. This one optimises for **your next obsession**: a topic close enough to feel approachable, far enough to feel like a discovery, and deep enough to keep you busy for weeks. Every signal comes from how millions of people actually move through Wikipedia ([Wikimedia clickstream](https://meta.wikimedia.org/wiki/Research:Wikipedia_clickstream)), not from guesses.
 
-**Status:** in active development. Phases 0–2 (tooling, data ingestion, EDA, click graph and communities) are done; the rest is specified and being built phase by phase. See [Project status](#project-status).
+**Status:** in active development. Phases 0–3 (tooling, data ingestion, EDA, click graph and communities, embeddings, vector database, map coordinates) are done; the rest is specified and being built phase by phase. See [Project status](#project-status).
 
 ---
 
@@ -91,22 +91,25 @@ Results will go in [docs/RESULTS.md](docs/RESULTS.md) once these phases are buil
 
 | | |
 |---|---|
-| Articles / link edges in DEV subset | 5,000 / 53,387 |
-| Article text matched | 99.96% |
-| Retrieval chunks | 6,023 |
+| Articles / link edges in DEV subset | 5,000 / 53,276 |
+| Article text matched | 99.98% |
+| Retrieval chunks (embedded, in pgvector) | 6,019 |
 | Median monthly views per article | ≈ 6,700 |
 | Median onward-click ratio | 0.30 (readers click onward ~30% of the time) |
 | Median share of visits from search | 33% |
-
 | Leiden resolution (from sweep) | 4 |
-| Rabbit-hole candidates (communities with ≥ 8 articles) | 43, median 68 articles |
+| Rabbit-hole candidates (communities with ≥ 8 articles) | 44, median 61 articles |
 | Share of clicks that stay inside a community | 71% |
 
 ![Views and onward ratio](reports/figures/01_views_onward.png)
 
-**Example communities found from clicks alone:** *Byzantine Empire* (Basil II, Justinian I, Alexios I Komnenos…), *Epic Cycle* (Little Iliad, Iliupersis, Aethiopis, Nostoi…), *Costa Concordia disaster* (Francesco Schettino, marine salvage, sinking of MV Sewol…), an SCP Foundation cluster (There Is No Antimemetics Division, information hazard, Lobotomy Corporation…; its central article is, amusingly, *Misanthropy*). See [reports/communities_sample.md](reports/communities_sample.md) and the sweep in [reports/leiden_sweep.md](reports/leiden_sweep.md).
+**Example communities found from clicks alone:** *Byzantine Empire* (Basil II, Justinian I, Alexios I Komnenos…), *Epic Cycle* (Little Iliad, Iliupersis, Aethiopis, Nostoi…), *The Backrooms* (liminal space, creepypasta, Kane Parsons…), *Keyboard layout*, and an SCP Foundation cluster (There Is No Antimemetics Division, information hazard, Lobotomy Corporation…; its central article is, amusingly, *Misanthropy*). See [reports/communities_sample.md](reports/communities_sample.md) and the sweep in [reports/leiden_sweep.md](reports/leiden_sweep.md).
 
-**Leiden vs HDBSCAN:** both find mostly the same topics (AMI ≈ 0.80). HDBSCAN on text discards 43% of articles as noise, mostly the bridging ones. On the same articles, Leiden's click-based clusters have higher modularity (0.635 vs 0.602), so Leiden defines the rabbit holes. Details are in [notebooks/02_communities.py](notebooks/02_communities.py).
+**Choosing the resolution:** sentence embeddings are anisotropic (two random articles score ≈ 0.46 cosine), so coherence is measured as *lift over random pairs*. The score (modularity × coherence lift) is nearly flat between resolutions 2 and 4, so the rule picks the finest resolution within 5% of the best: smaller, more specific rabbit holes when the metric can't tell them apart.
+
+**Leiden vs HDBSCAN:** the two overlap but differ (AMI ≈ 0.69). HDBSCAN on sentence embeddings discards ~17% of articles as noise, mostly the bridging ones, and wins on raw stickiness. On the same articles, Leiden's click-based clusters have clearly higher modularity (0.68 vs 0.58), so Leiden defines the rabbit holes. Details are in [notebooks/02_communities.py](notebooks/02_communities.py).
+
+**Semantic search** ([reports/seed_search_probes.md](reports/seed_search_probes.md)): *"mechanical keyboard"* → Keyboard technology, Model M keyboard, Ergonomic keyboard; *"Byzantine"* → Byzantine Empire, Medieval Greek; *"conspiracy theories"* → Shadow government, Illuminati.
 
 More charts in [reports/figures/](reports/figures/) and the EDA notebook [notebooks/01_eda.py](notebooks/01_eda.py).
 
@@ -117,8 +120,8 @@ More charts in [reports/figures/](reports/figures/) and the EDA notebook [notebo
 | 0 | Scaffold, tooling, CI | ✅ done |
 | 1 | Clickstream ingestion, DEV subset, article text, chunks, data checks, EDA | ✅ done |
 | 2 | Click graph and Leiden communities | ✅ done |
-| 3 | Embeddings, Postgres + pgvector, UMAP map | ⏳ next |
-| 4 | Rabbit-holeness score and validation | planned |
+| 3 | Embeddings, Postgres + pgvector, UMAP map | ✅ done |
+| 4 | Rabbit-holeness score and validation | ⏳ next |
 | 5 | Recommender v1 and evaluation harness | planned |
 | 6 | FastAPI service | planned |
 | 7 | RAG trails | planned |
@@ -158,13 +161,29 @@ make pipeline-dev         # build the DEV dataset (downloads ~1.5 GB of clickstr
 
 | Command | Does |
 |---|---|
-| `make pipeline-dev` / `make pipeline` | Run the data/ML pipeline on DEV / FULL data |
+| `make pipeline-dev` / `make pipeline` | Run the data/ML pipeline on DEV / FULL data, ending with a load into Postgres |
+| `make migrate` | Apply database migrations (the pipeline also does this) |
 | `make dagster-ui` | Open the Dagster UI to inspect assets and checks |
 | `make lint` | ruff check, ruff format, pyright |
 | `make test` | pytest |
 | `make api`, `make web`, `make eval` | API, frontend, offline evaluation (coming in later phases) |
 
-To open the EDA notebook: `uv --directory backend run marimo edit ../notebooks/01_eda.py`
+To open a notebook: `uv --directory backend run marimo edit ../notebooks/01_eda.py`
+
+### Optional: embed on a free GPU (Colab / Kaggle)
+Embedding runs on CPU by default (DEV takes ~15 minutes; FULL can take hours). To use a GPU instead:
+1. Run the pipeline once. It writes the inputs to `data/export/articles_texts.parquet` and `data/export/chunks_texts.parquet`, with columns `id` and `text`.
+2. Upload them to a GPU notebook and run:
+   ```python
+   import polars as pl
+   from sentence_transformers import SentenceTransformer
+   model = SentenceTransformer("BAAI/bge-small-en-v1.5", device="cuda")
+   for name in ["articles", "chunks"]:
+       df = pl.read_parquet(f"{name}_texts.parquet")
+       vecs = model.encode(df["text"].to_list(), batch_size=256, normalize_embeddings=True)
+       df.select("id").with_columns(pl.Series("embedding", vecs)).write_parquet(f"{name}_embeddings.parquet")
+   ```
+3. Put the two `*_embeddings.parquet` files in `data/import/` and re-run the pipeline. It uses them instead of embedding locally.
 
 ## Repository layout
 
@@ -172,12 +191,13 @@ To open the EDA notebook: `uv --directory backend run marimo edit ../notebooks/0
 backend/src/rabbithole/
   ingest/      clickstream download + parse, subset, stats, article text, chunking
   graph/       click graph, Leiden communities, labels, pruned serving graph
-  embed/       embeddings + UMAP                             (Phase 3)
+  embed/       sentence embeddings, UMAP map, semantic search
   scoring/     rabbit-holeness features + score              (Phase 4)
   recommend/   candidates, rankers, baselines                (Phase 5, 9)
   rag/, llm/   trail retrieval, generation, validation       (Phase 7)
   eval/        offline metrics + reports                     (Phase 5)
-  db/, api/    Postgres models, FastAPI                      (Phase 3, 6)
+  db/          Postgres models, idempotent loader (migrations in backend/alembic/)
+  api/         FastAPI                                       (Phase 6)
   pipelines/   Dagster asset definitions
 backend/tests/ pytest suite with tiny fixture data
 notebooks/     marimo notebooks (EDA, community and score analysis)

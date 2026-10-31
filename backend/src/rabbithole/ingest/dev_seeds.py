@@ -21,7 +21,7 @@ DEV_SEEDS: tuple[str, ...] = (
     "Coffee",
     "Rust_(programming_language)",
     "Linux",
-    "Mechanical_keyboard",
+    "Keyboard_technology",  # "Mechanical_keyboard" is a redirect to this page
     "Greek_mythology",
     "Mahabharata",
     "Titanic",

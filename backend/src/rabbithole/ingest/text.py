@@ -138,7 +138,7 @@ def chunk_words(text: str, size: int = 300, overlap: int = 50) -> list[str]:
 
 
 def chunks(text_table: pl.DataFrame) -> pl.DataFrame:
-    """chunks table: article_id, ord, section, text. Each chunk is prefixed with its section."""
+    """chunks table: chunk_id, article_id, ord, section, text. Text starts with its heading."""
     rows: list[dict[str, Any]] = []
     for article_id, title, body in text_table.select(
         "article_id", "title", "body_text"
@@ -161,4 +161,4 @@ def chunks(text_table: pl.DataFrame) -> pl.DataFrame:
     return pl.DataFrame(
         rows,
         schema={"article_id": pl.UInt32, "ord": pl.Int32, "section": pl.String, "text": pl.String},
-    )
+    ).with_row_index("chunk_id")

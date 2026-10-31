@@ -6,7 +6,7 @@ import igraph as ig
 import numpy as np
 import polars as pl
 from scipy.sparse import csr_matrix
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.preprocessing import normalize
 
 MIN_COMMUNITY_SIZE = 8
@@ -39,14 +39,9 @@ def leiden(g: ig.Graph, resolution: float, seed: int = 42) -> list[int]:
     return list(part.membership)
 
 
-def text_vectors(texts: list[str]) -> csr_matrix:
-    """L2-normalized TF-IDF vectors of lead texts (stand-in for embeddings until Phase 3)."""
-    vec = TfidfVectorizer(stop_words="english", min_df=2, max_df=0.5, sublinear_tf=True)
-    return csr_matrix(vec.fit_transform([t or "" for t in texts]))
-
-
-def coherence(membership: list[int], vectors: csr_matrix) -> float:
-    """Mean intra-community cosine similarity, averaged over communities with >= 8 members.
+def coherence(membership: list[int], vectors: np.ndarray) -> float:
+    """Mean intra-community cosine similarity of unit-length embeddings, averaged over
+    communities with >= 8 members.
 
     For unit vectors, the sum of pairwise cosines is (|sum v|^2 - m) / 2, so no m x m matrix.
     """
@@ -57,13 +52,18 @@ def coherence(membership: list[int], vectors: csr_matrix) -> float:
         m = rows.shape[0]
         if m < MIN_COMMUNITY_SIZE:
             continue
-        total = np.asarray(rows.sum(axis=0)).ravel()
-        scores.append(float((total @ total - rows.multiply(rows).sum()) / (m * (m - 1))))
+        total = rows.sum(axis=0)
+        scores.append(float((total @ total - np.square(rows).sum()) / (m * (m - 1))))
     return float(np.mean(scores)) if scores else 0.0
 
 
-def sweep(g: ig.Graph, resolutions: list[float], vectors: csr_matrix) -> pl.DataFrame:
-    """Leiden at each resolution: modularity (at resolution 1), size distribution, coherence."""
+def sweep(g: ig.Graph, resolutions: list[float], vectors: np.ndarray) -> pl.DataFrame:
+    """Leiden at each resolution: modularity (at resolution 1), size distribution, coherence.
+
+    `coherence_lift` subtracts the mean cosine of *random* article pairs: sentence embeddings
+    are anisotropic (any two bge vectors score ~0.46), so raw coherence barely moves.
+    """
+    baseline = coherence([0] * len(vectors), vectors) if len(vectors) >= MIN_COMMUNITY_SIZE else 0.0
     rows: list[dict[str, float]] = []
     for r in resolutions:
         membership = leiden(g, r)
@@ -81,20 +81,28 @@ def sweep(g: ig.Graph, resolutions: list[float], vectors: csr_matrix) -> pl.Data
                 "coherence": coherence(membership, vectors),
             }
         )
-    return pl.DataFrame(rows)
+    return pl.DataFrame(rows).with_columns(
+        (pl.col("coherence") - baseline).alias("coherence_lift"),
+        (pl.col("modularity") * (pl.col("coherence") - baseline)).alias("score"),
+    )
 
 
-def choose_resolution(metrics: pl.DataFrame, size_band: tuple[int, int] = (20, 200)) -> float:
-    """Best modularity x coherence among resolutions whose median eligible size is in the band.
+def choose_resolution(
+    metrics: pl.DataFrame, size_band: tuple[int, int] = (20, 200), tolerance: float = 0.05
+) -> float:
+    """Finest resolution whose score (modularity x coherence lift) is within `tolerance` of the
+    best, among resolutions with median eligible community size in `size_band`.
 
-    Modularity alone favours a few huge communities; coherence alone favours tiny ones.
+    Modularity alone favours a few huge communities, coherence alone favours tiny ones. The
+    product is often flat near its peak; then we prefer smaller, more specific rabbit holes.
     Falls back to all resolutions if none lands in the band.
     """
     lo, hi = size_band
     in_band = metrics.filter(pl.col("median_size").is_between(lo, hi))
     pool = in_band if in_band.height else metrics
-    best = pool.sort(pl.col("modularity") * pl.col("coherence"), descending=True)
-    return float(best["resolution"][0])
+    best = float(pool["score"].max())  # pyright: ignore[reportArgumentType]
+    near = pool.filter(pl.col("score") >= best * (1 - tolerance))
+    return float(near["resolution"].max())  # pyright: ignore[reportArgumentType]
 
 
 def central_articles(edges: pl.DataFrame, membership: pl.DataFrame) -> pl.DataFrame:

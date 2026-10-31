@@ -1,17 +1,17 @@
 # Leiden resolution sweep (DEV)
 
-Modularity is computed at resolution 1 for every row, so rows are comparable. Coherence = mean intra-community cosine similarity of lead-text TF-IDF vectors (communities with >= 8 articles).
+Modularity is computed at resolution 1 for every row, so rows are comparable. Coherence = mean intra-community cosine similarity of article embeddings (communities with >= 8 articles); coherence_lift = coherence minus the mean cosine of random article pairs. score = modularity x coherence_lift.
 
-| resolution | communities | eligible | median_size | max_size | share_in_eligible | modularity | coherence |
-|---|---|---|---|---|---|---|---|
-| 1 | 25 | 23 | 197 | 510 | 0.999 | 0.7618 | 0.0584 |
-| 2 | 30 | 29 | 107 | 504 | 0.9996 | 0.7254 | 0.07124 |
-| 3 | 39 | 37 | 103 | 450 | 0.9984 | 0.6719 | 0.07603 |
-| 4 | 46 | 43 | 68 | 434 | 0.9984 | 0.6578 | 0.081 |
-| 5 | 58 | 51 | 42 | 434 | 0.995 | 0.6094 | 0.08514 |
-| 6 | 67 | 55 | 39 | 434 | 0.9908 | 0.5847 | 0.09003 |
-| 8 | 85 | 63 | 32 | 356 | 0.9826 | 0.5431 | 0.09027 |
-| 12 | 106 | 74 | 33 | 354 | 0.979 | 0.4753 | 0.09517 |
-| 20 | 148 | 97 | 31 | 201 | 0.9716 | 0.4132 | 0.1016 |
+| resolution | communities | eligible | median_size | max_size | share_in_eligible | modularity | coherence | coherence_lift | score |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | 25 | 23 | 192 | 506 | 0.999 | 0.762 | 0.5789 | 0.1146 | 0.08736 |
+| 2 | 31 | 30 | 110 | 503 | 0.9996 | 0.7257 | 0.5967 | 0.1324 | 0.09611 |
+| 3 | 40 | 38 | 98.5 | 440 | 0.9986 | 0.6721 | 0.5996 | 0.1354 | 0.09098 |
+| 4 | 47 | 44 | 61 | 425 | 0.9984 | 0.6568 | 0.6067 | 0.1425 | 0.09361 |
+| 5 | 57 | 50 | 47 | 425 | 0.995 | 0.6028 | 0.6123 | 0.148 | 0.08924 |
+| 6 | 66 | 54 | 43 | 424 | 0.9906 | 0.5939 | 0.6137 | 0.1494 | 0.08876 |
+| 8 | 86 | 63 | 38 | 385 | 0.9818 | 0.5244 | 0.6205 | 0.1563 | 0.08196 |
+| 12 | 107 | 76 | 34.5 | 235 | 0.979 | 0.4801 | 0.6253 | 0.1611 | 0.07735 |
+| 20 | 146 | 97 | 31 | 200 | 0.973 | 0.4225 | 0.6315 | 0.1673 | 0.07069 |
 
-**Chosen resolution: 4** (best modularity x coherence with median community size in 20-200).
+**Chosen resolution: 4** (finest resolution within 5% of the best score, median community size in 20-200).

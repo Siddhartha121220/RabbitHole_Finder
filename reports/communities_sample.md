@@ -1,4 +1,4 @@
-# Community sample (20 of 43 eligible communities)
+# Community sample (20 of 44 eligible communities)
 
 Random sample (fixed seed). Articles are listed most central first. Each community should read as one coherent topic.
 
@@ -34,7 +34,7 @@ id 3 · 308 articles · keywords: beatles, album, song, lennon, mccartney
 
 ## Cricket (cricket, team, icc)
 
-id 4 · 263 articles · keywords: cricket, team, icc, test, international
+id 4 · 260 articles · keywords: cricket, team, icc, test, international
 
 1. Cricket
 2. Don Bradman
@@ -47,24 +47,39 @@ id 4 · 263 articles · keywords: cricket, team, icc, test, international
 9. Mumbai Indians
 10. Wicket
 
+## Bharat Ratna (indian, india, music)
+
+id 5 · 101 articles · keywords: indian, india, music, carnatic, sai
+
+1. Bharat Ratna
+2. Sathya Sai Baba
+3. Padma Vibhushan
+4. Hindustani classical music
+5. Padma Shri
+6. Tyagaraja
+7. Carnatic music
+8. Ravi Shankar
+9. Sitar
+10. Raga
+
 ## 1998 FIFA World Cup (cup, world, tournament)
 
-id 6 · 11 articles · keywords: cup, world, tournament, fifa, finals
+id 6 · 10 articles · keywords: cup, world, tournament, fifa, finals
 
 1. 1998 FIFA World Cup
-2. 2002 FIFA World Cup
-3. 2006 FIFA World Cup
+2. 2006 FIFA World Cup
+3. 2002 FIFA World Cup
 4. 2010 FIFA World Cup
 5. 1994 FIFA World Cup
 6. Gianluigi Buffon
 7. Iker Casillas
-8. Oliver Kahn
-9. Michael Owen
-10. Back-pass rule
+8. Michael Owen
+9. Back-pass rule
+10. Nelson Mandela
 
 ## CONCACAF (football, fifa, cup)
 
-id 7 · 68 articles · keywords: football, fifa, cup, afc, tournament
+id 7 · 67 articles · keywords: football, fifa, cup, afc, tournament
 
 1. CONCACAF
 2. Asian Football Confederation
@@ -77,69 +92,69 @@ id 7 · 68 articles · keywords: football, fifa, cup, afc, tournament
 9. AFC Asian Cup
 10. Sepp Blatter
 
-## Albert Einstein (quantum, black, physics)
+## UEFA Champions League (league, uefa, club)
 
-id 10 · 434 articles · keywords: quantum, black, physics, mass, theory
+id 10 · 27 articles · keywords: league, uefa, club, cup, football
 
-1. Albert Einstein
-2. Quantum mechanics
-3. Black hole
-4. Schrödinger equation
-5. Erwin Schrödinger
-6. Max Planck
-7. Supermassive black hole
-8. Quasar
-9. General relativity
-10. Neutron star
+1. UEFA Champions League
+2. Premier League
+3. Manchester City F.C.
+4. 2025–26 UEFA Champions League
+5. UEFA Europa League
+6. FIFA Club World Cup
+7. Liverpool F.C.
+8. 2024–25 UEFA Champions League
+9. 2026–27 UEFA Champions League
+10. Paris Saint-Germain FC
 
-## The Legend of Zelda (nintendo, game, zelda)
+## The Backrooms (backrooms, film, horror)
 
-id 14 · 107 articles · keywords: nintendo, game, zelda, link, legend
+id 14 · 27 articles · keywords: backrooms, film, horror, creepypasta, series
 
-1. The Legend of Zelda
-2. The Legend of Zelda: Majora's Mask
-3. The Legend of Zelda: Ocarina of Time
-4. The Legend of Zelda: A Link to the Past
-5. Universe of The Legend of Zelda
-6. Nintendo Switch
-7. The Legend of Zelda: Link's Awakening
-8. Nintendo
-9. The Legend of Zelda: Twilight Princess
-10. The Legend of Zelda: Breath of the Wild
+1. The Backrooms
+2. Backrooms (web series)
+3. Backrooms (film)
+4. Liminal space
+5. Creepypasta
+6. Found footage film
+7. Kane Parsons
+8. 4chan
+9. Ben Drowned
+10. The Backrooms (Found Footage)
 
-## Byzantine Empire (empire, byzantine, emperor)
+## Dravidian languages (india, mughal, shah)
 
-id 18 · 273 articles · keywords: empire, byzantine, emperor, constantinople, roman
+id 18 · 339 articles · keywords: india, mughal, shah, indian, delhi
 
-1. Byzantine Empire
-2. Ottoman Empire
-3. Constantine the Great
-4. Michael VIII Palaiologos
-5. Basil II
-6. Justinian I
-7. Alexios I Komnenos
-8. Heraclius
-9. Theodosius I
-10. Constantine XI Palaiologos
+1. Dravidian languages
+2. Mughal Empire
+3. Babur
+4. Indian Rebellion of 1857
+5. Akbar
+6. Mumbai
+7. Aurangzeb
+8. Delhi Sultanate
+9. Taj Mahal
+10. India
 
-## Charles Darwin (species, evolution, selection)
+## Mahabharata (sanskrit, hindu, epic)
 
-id 21 · 199 articles · keywords: species, evolution, selection, darwin, life
+id 21 · 194 articles · keywords: sanskrit, hindu, epic, mahabharata, vedic
 
-1. Charles Darwin
-2. Eugenics
-3. Mendelian inheritance
-4. Homo
-5. Last universal common ancestor
-6. Organism
-7. Animal
-8. Species
-9. Gregor Mendel
-10. DNA
+1. Mahabharata
+2. Krishna
+3. Vedas
+4. Vyasa
+5. Kuru kingdom
+6. Kyrgyzstan
+7. Ramayana
+8. Karna
+9. Rama
+10. Vishnu
 
-## Misanthropy (film, fiction, horror)
+## Misanthropy (fiction, film, horror)
 
-id 24 · 95 articles · keywords: film, fiction, horror, scp, social
+id 24 · 95 articles · keywords: fiction, film, horror, scp, social
 
 1. Misanthropy
 2. SCP Foundation
@@ -148,13 +163,13 @@ id 24 · 95 articles · keywords: film, fiction, horror, scp, social
 5. There Is No Antimemetics Division
 6. V/H/S
 7. Qntm
-8. Nick Bostrom
-9. SCP – Containment Breach
+8. SCP – Containment Breach
+9. Nick Bostrom
 10. Lobotomy Corporation
 
 ## Augustus (roman, rome, caesar)
 
-id 26 · 228 articles · keywords: roman, rome, caesar, republic, augustus
+id 26 · 226 articles · keywords: roman, rome, caesar, republic, augustus
 
 1. Augustus
 2. Etruscan civilization
@@ -164,12 +179,12 @@ id 26 · 228 articles · keywords: roman, rome, caesar, republic, augustus
 6. Marcus Vipsanius Agrippa
 7. Lucius Tarquinius Superbus
 8. Alexander the Great
-9. Lucius Junius Brutus
-10. Assassination of Julius Caesar
+9. Assassination of Julius Caesar
+10. Pompey
 
 ## Heracles (greek, mythology, ancient)
 
-id 28 · 121 articles · keywords: greek, mythology, ancient, myths, gods
+id 29 · 121 articles · keywords: greek, mythology, ancient, myths, gods
 
 1. Heracles
 2. Myth
@@ -182,24 +197,24 @@ id 28 · 121 articles · keywords: greek, mythology, ancient, myths, gods
 9. Gaia
 10. Titans
 
-## Forward (association football) (club, football, goals)
+## Goalkeeper (association football) (goalkeeper, team, football)
 
-id 29 · 34 articles · keywords: club, football, goals, player, barcelona
+id 30 · 28 articles · keywords: goalkeeper, team, football, cup, brazil
 
-1. Forward (association football)
-2. Lionel Messi
-3. The beautiful game
-4. Argentina national football team
+1. Goalkeeper (association football)
+2. The beautiful game
+3. Brazil national football team
+4. Manuel Neuer
 5. Pelé
-6. Thierry Henry
-7. Ronaldo (Brazilian footballer)
-8. Real Madrid CF
-9. Defender (association football)
-10. Formation (association football)
+6. FIFA World Cup awards
+7. FC Bayern Munich
+8. Peter Doherty (footballer)
+9. Germany national football team
+10. Oliver Kahn
 
 ## Epic Cycle (epic, cycle, poem)
 
-id 30 · 12 articles · keywords: epic, cycle, poem, hero, greek
+id 31 · 12 articles · keywords: epic, cycle, poem, hero, greek
 
 1. Epic Cycle
 2. Little Iliad
@@ -212,24 +227,9 @@ id 30 · 12 articles · keywords: epic, cycle, poem, hero, greek
 9. Thesprotia
 10. Titanomachy (epic poem)
 
-## J. P. Morgan (morgan, company, banking)
+## Japan (japanese, japan, rice)
 
-id 31 · 25 articles · keywords: morgan, company, banking, steel, american
-
-1. J. P. Morgan
-2. Roaring Twenties
-3. Progressive Era
-4. Rhinophyma
-5. Morgan family
-6. University of Göttingen
-7. Rosacea
-8. Göttingen
-9. U.S. Steel
-10. Great Depression in the United States
-
-## Japan (japanese, japan, fish)
-
-id 32 · 183 articles · keywords: japanese, japan, fish, rice, korean
+id 33 · 173 articles · keywords: japanese, japan, rice, fish, korean
 
 1. Japan
 2. Sushi
@@ -244,7 +244,7 @@ id 32 · 183 articles · keywords: japanese, japan, fish, rice, korean
 
 ## Homer (greek, homer, odyssey)
 
-id 33 · 29 articles · keywords: greek, homer, odyssey, iliad, ancient
+id 34 · 29 articles · keywords: greek, homer, odyssey, iliad, ancient
 
 1. Homer
 2. Odyssey
@@ -259,7 +259,7 @@ id 33 · 29 articles · keywords: greek, homer, odyssey, iliad, ancient
 
 ## CRISPR (nobel, crispr, prize)
 
-id 34 · 76 articles · keywords: nobel, crispr, prize, dna, genetically
+id 35 · 72 articles · keywords: nobel, crispr, prize, dna, genetically
 
 1. CRISPR
 2. Jennifer Doudna
@@ -267,37 +267,37 @@ id 34 · 76 articles · keywords: nobel, crispr, prize, dna, genetically
 4. Nobel Prize
 5. CRISPR gene editing
 6. Kavli Prize
-7. Genetic engineering
-8. Marie Curie
-9. Nobel Prize in Chemistry
-10. Emmanuelle Charpentier
+7. Marie Curie
+8. Nobel Prize in Chemistry
+9. Emmanuelle Charpentier
+10. Genetic engineering
 
-## Shia LaBeouf (film, labeouf, shia)
+## Lionel Messi (club, barcelona, goals)
 
-id 35 · 21 articles · keywords: film, labeouf, shia, drama, coppola
+id 39 · 24 articles · keywords: club, barcelona, goals, football, player
 
-1. Shia LaBeouf
-2. Margaret Qualley
-3. Mia Goth
-4. Rainey Qualley
-5. FKA Twigs
-6. Nymphomaniac (film)
-7. Honey Boy (film)
-8. Salvable
-9. Even Stevens
-10. Henry Johnson (film)
+1. Lionel Messi
+2. Forward (association football)
+3. Argentina national football team
+4. Thierry Henry
+5. Real Madrid CF
+6. Ronaldo (Brazilian footballer)
+7. Defender (association football)
+8. Formation (association football)
+9. FC Barcelona
+10. Midfielder
 
-## Costa Concordia disaster (ship, salvage, disaster)
+## Southampton (county, southampton, england)
 
-id 41 · 18 articles · keywords: ship, salvage, disaster, maritime, crew
+id 41 · 47 articles · keywords: county, southampton, england, south, east
 
-1. Costa Concordia disaster
-2. Francesco Schettino
-3. The captain goes down with the ship
-4. Maritime law
-5. Marine salvage
-6. Yiannis Avranas
-7. Sinking of MV Sewol
-8. Carnival Corporation
-9. SS El Faro
-10. Bounty (1960 ship)
+1. Southampton
+2. Ceremonial counties of England
+3. England
+4. South East England
+5. Hampshire
+6. East Sussex
+7. Kent
+8. Buckinghamshire
+9. Oxfordshire
+10. Northern Ireland

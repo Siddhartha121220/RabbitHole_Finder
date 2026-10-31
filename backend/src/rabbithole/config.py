@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr | None = None
     llm_model: str = "claude-haiku-5-5"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
+    embedding_dim: int = 384  # must match the model; checked when embedding
+    # bge models expect this instruction on short queries (not on documents)
+    embedding_query_prefix: str = "Represent this sentence for searching relevant passages: "
+    embed_batch_size: int = 64
+    embed_shard_rows: int = 2048
     dataset_mode: Literal["dev", "full"] = "dev"
     clickstream_months: str = ""
     mlflow_tracking_uri: str = "http://localhost:5000"

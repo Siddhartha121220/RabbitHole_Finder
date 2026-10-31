@@ -18,10 +18,11 @@ def sweep_report(metrics: pl.DataFrame, chosen: float, mode: str) -> str:
     return (
         f"# Leiden resolution sweep ({mode.upper()})\n\n"
         "Modularity is computed at resolution 1 for every row, so rows are comparable. "
-        "Coherence = mean intra-community cosine similarity of lead-text TF-IDF vectors "
-        "(communities with >= 8 articles).\n\n"
+        "Coherence = mean intra-community cosine similarity of article embeddings "
+        "(communities with >= 8 articles); coherence_lift = coherence minus the mean cosine "
+        "of random article pairs. score = modularity x coherence_lift.\n\n"
         f"{_md_table(metrics)}\n\n**Chosen resolution: {chosen:g}** "
-        "(best modularity x coherence with median community size in 20-200).\n"
+        "(finest resolution within 5% of the best score, median community size in 20-200).\n"
     )
 
 

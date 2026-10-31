@@ -7,15 +7,22 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.20.1",
     "dagster>=1.13.27",
     "dagster-webserver>=1.13.27",
     "datasets>=5.1.0",
     "duckdb>=2.0.0",
+    "pgvector>=0.5.1",
     "polars>=2.1.0",
+    "psycopg[binary]>=3.3.6",
     "pydantic-settings>=2.16.2",
     "python-igraph>=1.0.0",
     "scikit-learn>=1.9.1",
     "scipy>=1.18.1",
+    "sentence-transformers>=6.2.0",
+    "sqlalchemy>=2.1.6",
+    "torch>=2.15.0",
+    "umap-learn>=0.5.12",
 ]
 
 [build-system]
@@ -57,8 +64,20 @@ testpaths = ["tests"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["rabbithole"]
+# backend/alembic/ (migrations folder) would otherwise make the alembic package look local
+known-third-party = ["alembic"]
 
 [tool.ruff.lint.per-file-ignores]
 # marimo renders a cell's last bare expression as its output
 "**/notebooks/*.py" = ["B018"]
 "../notebooks/*.py" = ["B018"]
+
+# CPU-only PyTorch (sentence-transformers dependency). The default Linux wheel bundles CUDA (~3 GB);
+# a GPU is optional and handled by the Colab/Kaggle export path instead.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }

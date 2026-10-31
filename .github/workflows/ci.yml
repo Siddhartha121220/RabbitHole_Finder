@@ -3,6 +3,19 @@ on: [push, pull_request]
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: rabbit
+          POSTGRES_PASSWORD: rabbit
+          POSTGRES_DB: rabbithole
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rabbit -d rabbithole"
+          --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://rabbit:rabbit@localhost:5432/rabbithole
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7

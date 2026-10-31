@@ -44,12 +44,12 @@ Rough timeline for a student working part-time with Claude Code: 5–7 weeks.
 **Acceptance:** sample communities look coherent (show the user `communities_sample.md` and ask for a thumbs up before continuing).
 
 ## Phase 3 — Embeddings, vector DB & map
-- [ ] Embed article leads and chunks with `EMBEDDING_MODEL`; batch, show progress, resume on crash (write in shards).
-- [ ] Optional GPU export/import path (Parquet in/out) documented in README.
-- [ ] SQLAlchemy models + Alembic migrations for all tables; HNSW indexes.
-- [ ] Loader asset: Parquet → Postgres (idempotent upsert, records `pipeline_runs`).
-- [ ] UMAP 2D for articles and community centroids; stored in DB.
-- [ ] `/seeds/search` logic as a library function with tests.
+- [x] Embed article leads and chunks with `EMBEDDING_MODEL`; batch, show progress, resume on crash (write in shards).
+- [x] Optional GPU export/import path (Parquet in/out) documented in README.
+- [x] SQLAlchemy models + Alembic migrations for all tables; HNSW indexes.
+- [x] Loader asset: Parquet → Postgres (idempotent upsert, records `pipeline_runs`).
+- [x] UMAP 2D for articles and community centroids; stored in DB.
+- [x] `/seeds/search` logic as a library function with tests.
 
 **Acceptance:** semantic search for "mechanical keyboard", "Byzantine", "cricket" returns sensible articles in DEV; DB loaded via `make pipeline-dev`.
 

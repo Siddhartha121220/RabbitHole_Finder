@@ -13,9 +13,7 @@ def _():
     import numpy as np
     import polars as pl
     from sklearn.cluster import HDBSCAN
-    from sklearn.decomposition import TruncatedSVD
     from sklearn.metrics import adjusted_mutual_info_score
-    from sklearn.preprocessing import normalize
 
     from rabbithole.config import REPO_ROOT, get_settings
     from rabbithole.graph import communities as comm
@@ -25,41 +23,44 @@ def _():
     FIG = REPO_ROOT / "reports" / "figures"
     FIG.mkdir(parents=True, exist_ok=True)
     edges = pl.read_parquet(processed(settings, "edges"))
-    texts = pl.read_parquet(processed(settings, "article_text")).sort("article_id")
     leiden = pl.read_parquet(processed(settings, "article_communities")).sort("article_id")
     mo.md(
         "# Leiden (click graph) vs HDBSCAN (text)\n\n"
         "Leiden groups articles that **readers move between**; HDBSCAN groups articles whose "
-        "**text is similar**. Which gives better rabbit holes? Text vectors are TF-IDF -> 100-d "
-        "LSA for now; re-run with sentence embeddings after Phase 3."
+        "**text is similar** (sentence embeddings, reduced to 10-d with UMAP). "
+        "Which gives better rabbit holes?"
     )
     return (
         FIG,
         HDBSCAN,
-        TruncatedSVD,
         adjusted_mutual_info_score,
         comm,
         edges,
         leiden,
         mo,
-        normalize,
         np,
         pl,
         plt,
-        texts,
+        processed,
+        settings,
     )
 
 
 @app.cell
-def _(HDBSCAN, TruncatedSVD, comm, normalize, texts):
-    tfidf = comm.text_vectors(texts["lead_text"].to_list())
-    lsa = normalize(TruncatedSVD(n_components=100, random_state=0).fit_transform(tfidf))
-    hdb_labels = HDBSCAN(min_cluster_size=8, min_samples=4).fit_predict(lsa)
-    return hdb_labels, tfidf
+def _(HDBSCAN, np, pl, processed, settings):
+    import umap
+
+    embeddings = pl.read_parquet(processed(settings, "article_embeddings")).sort("id")
+    vecs = embeddings["embedding"].to_numpy()
+    # HDBSCAN struggles in 384-d; reduce to 10-d first (the usual BERTopic-style recipe).
+    reduced = umap.UMAP(n_components=10, metric="cosine", random_state=0).fit_transform(vecs)
+    hdb_labels = HDBSCAN(min_cluster_size=8, min_samples=4, copy=True).fit_predict(reduced)
+    hdb_labels = np.asarray(hdb_labels)
+    return hdb_labels, vecs
 
 
 @app.cell
-def _(comm, edges, np, pl, tfidf):
+def _(comm, edges, np, pl, vecs):
     def stickiness(labels: np.ndarray) -> float:
         """Share of link clicks whose source and target are in the same cluster (noise excluded)."""
         lab = pl.DataFrame({"id": np.arange(len(labels)), "c": labels})
@@ -80,7 +81,7 @@ def _(comm, edges, np, pl, tfidf):
             "clusters (>=8)": len(sizes),
             "median size": float(np.median(sizes)),
             "noise share": round(1 - clustered.mean(), 3),
-            "text coherence": round(comm.coherence(lab.tolist(), tfidf), 4),
+            "embedding coherence": round(comm.coherence(lab.tolist(), vecs), 4),
             "click stickiness": round(stickiness(labels), 3),
         }
 
@@ -115,7 +116,12 @@ def _(adjusted_mutual_info_score, comm, edges, hdb_labels, leiden, mo, np, pl, s
 
 @app.cell
 def _(FIG, comparison, plt):
-    cols = ["noise share", "text coherence", "click stickiness", "modularity on shared articles"]
+    cols = [
+        "noise share",
+        "embedding coherence",
+        "click stickiness",
+        "modularity on shared articles",
+    ]
     fig, axes = plt.subplots(1, len(cols), figsize=(13, 3.5))
     for ax, col in zip(axes, cols, strict=True):
         ax.bar(comparison["method"], comparison[col], color=["#6b4f3a", "#3a6b5c"])
@@ -131,21 +137,21 @@ def _(FIG, comparison, plt):
 def _(mo):
     mo.md(
         """
-**Reading it (DEV, 2026-07):**
+**Reading it (DEV, 2026-07, bge-small embeddings):**
 
-- The two methods largely agree (AMI ~0.8): reader navigation and text similarity find
-  mostly the same topics.
-- HDBSCAN wins on text coherence (expected: it clusters the text vectors) and on raw click
-  stickiness (0.85 vs 0.71). The raw comparison is not fair, though. HDBSCAN labels **43% of
-  articles as noise** (about 28% of all views), and those are mostly the bridging articles that
-  any partition would struggle to keep inside. Its larger clusters also make staying inside easier.
-- Restricted to the same articles, **Leiden has the higher modularity** (0.635 vs 0.602):
+- The two methods find related but clearly different structure (AMI ~0.69): reader
+  navigation and text similarity overlap without being the same thing.
+- HDBSCAN wins on embedding coherence (expected: it clusters those embeddings) and on raw
+  click stickiness (0.80 vs 0.71). The raw comparison is not fair, though. HDBSCAN labels
+  **~17% of articles as noise** (~17% of views), mostly the bridging articles that any
+  partition would struggle to keep inside, and those could never be recommended.
+- Restricted to the same articles, **Leiden has clearly higher modularity** (0.68 vs 0.58):
   relative to what cluster sizes alone would give, Leiden's clusters keep readers inside more.
-- Leiden also covers every article, so nothing becomes unrecommendable.
+- Leiden also covers every article.
 
 **Decision:** Leiden on the click graph for rabbit holes, since a rabbit hole is defined by
-readers *staying inside*. Text coherence stays a secondary sanity check. Re-run with sentence
-embeddings after Phase 3.
+readers *staying inside*. Embedding coherence stays a secondary sanity check (and is part of
+the resolution choice).
 """
     )
     return

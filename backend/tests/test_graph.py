@@ -1,8 +1,8 @@
 import math
 
+import numpy as np
 import polars as pl
 import pytest
-from scipy.sparse import csr_matrix
 
 from rabbithole.graph import communities as comm
 from rabbithole.graph import pruned, report
@@ -33,24 +33,33 @@ def test_leiden_is_deterministic_and_finds_cliques() -> None:
 
 
 def test_coherence_identical_vs_orthogonal() -> None:
-    same = csr_matrix([[1.0, 0.0]] * 8)
+    same = np.array([[1.0, 0.0]] * 8)
     assert comm.coherence([0] * 8, same) == pytest.approx(1.0)
-    ortho = csr_matrix([[1.0 if i == j else 0.0 for j in range(8)] for i in range(8)])
+    ortho = np.eye(8)
     assert comm.coherence([0] * 8, ortho) == pytest.approx(0.0)
     assert comm.coherence([0] * 7 + [1], same) == 0.0  # no community reaches 8 members
 
 
-def test_choose_resolution_prefers_in_band_balance() -> None:
+def test_choose_resolution_prefers_finest_near_best() -> None:
     m = pl.DataFrame(
         {
-            "resolution": [1.0, 2.0, 5.0],
-            "median_size": [400.0, 100.0, 40.0],
-            "modularity": [0.9, 0.7, 0.6],
-            "coherence": [0.05, 0.07, 0.09],
+            "resolution": [1.0, 2.0, 4.0, 8.0],
+            "median_size": [400.0, 100.0, 60.0, 30.0],
+            "score": [0.20, 0.096, 0.094, 0.080],
         }
     )
-    # 1.0 is out of band; 0.6*0.09 = 0.054 beats 0.7*0.07 = 0.049
-    assert comm.choose_resolution(m) == 5.0
+    # 1.0 is out of the size band; 4.0 is within 5% of the best (2.0) and finer; 8.0 is not.
+    assert comm.choose_resolution(m) == 4.0
+    assert comm.choose_resolution(m, tolerance=0.0) == 2.0
+
+
+def test_sweep_reports_lift_over_random_pairs() -> None:
+    g = comm.undirected_graph(two_cliques(), 8)
+    vecs = np.array([[1.0, 0.0]] * 4 + [[0.0, 1.0]] * 4)
+    m = comm.sweep(g, [1.0], vecs)
+    # No community reaches 8 members, so coherence is 0 and the lift is negative baseline.
+    assert m["coherence"].item() == 0.0
+    assert m["coherence_lift"].item() == pytest.approx(-comm.coherence([0] * 8, vecs))
 
 
 def test_central_article_uses_member_probability_votes() -> None:
