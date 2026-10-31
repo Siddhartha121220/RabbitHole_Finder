@@ -1,5 +1,3 @@
-# pyright: basic
-# (`datasets` ships without complete type hints, so strict mode is relaxed for this file only.)
 """FULL-mode article text: stream the Hugging Face `wikimedia/wikipedia` dump."""
 
 from collections.abc import Iterator

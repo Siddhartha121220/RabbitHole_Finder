@@ -6,7 +6,9 @@ from typing import Any
 import dagster as dg
 import polars as pl
 
-from rabbithole.config import Settings, get_settings
+from rabbithole.config import REPO_ROOT, Settings, get_settings
+from rabbithole.graph import communities as comm
+from rabbithole.graph import pruned, report
 from rabbithole.ingest import clickstream, hf_text, stats, subset, text
 from rabbithole.ingest.dev_seeds import DEV_SEEDS
 
@@ -91,6 +93,59 @@ def chunks() -> dg.MaterializeResult[Any]:
     return _write(df, processed(settings, "chunks"))
 
 
+def report_path(settings: Settings, name: str) -> Path:
+    suffix = "" if settings.dataset_mode == "dev" else f"_{settings.dataset_mode}"
+    path = REPO_ROOT / "reports" / f"{name}{suffix}.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+@dg.asset(group_name="graph", deps=[edges, article_text])
+def communities(context: dg.AssetExecutionContext) -> dg.MaterializeResult[Any]:
+    """Leiden resolution sweep, final partition, labels, and the sanity-check reports."""
+    settings = get_settings()
+    e = pl.read_parquet(processed(settings, "edges"))
+    texts = pl.read_parquet(processed(settings, "article_text")).sort("article_id")
+
+    g = comm.undirected_graph(e, texts.height)
+    vectors = comm.text_vectors(texts["lead_text"].to_list())
+    metrics = comm.sweep(g, settings.leiden_resolutions, vectors)
+    chosen = settings.leiden_resolution or comm.choose_resolution(metrics)
+    context.log.info(f"Leiden resolution: {chosen:g}")
+
+    membership = pl.DataFrame(
+        {"article_id": texts["article_id"], "community_id": comm.leiden(g, chosen)}
+    )
+    table = comm.community_table(membership, comm.central_articles(e, membership), texts)
+
+    metrics.write_parquet(processed(settings, "leiden_sweep"))
+    membership.write_parquet(processed(settings, "article_communities"))
+    table.write_parquet(processed(settings, "communities"))
+    report_path(settings, "leiden_sweep").write_text(
+        report.sweep_report(metrics, chosen, settings.dataset_mode)
+    )
+    report_path(settings, "communities_sample").write_text(
+        report.sample_report(table, texts.select("article_id", "title"))
+    )
+    return dg.MaterializeResult(
+        metadata={
+            "resolution": chosen,
+            "communities": table.height,
+            "eligible": int(table["eligible"].sum()),
+        }
+    )
+
+
+@dg.asset(group_name="graph", deps=[edges])
+def edges_pruned() -> dg.MaterializeResult[Any]:
+    settings = get_settings()
+    e = pl.read_parquet(processed(settings, "edges"))
+    return _write(
+        pruned.prune(e, settings.prune_top_k, settings.hub_penalty),
+        processed(settings, "edges_pruned"),
+    )
+
+
 def _check(passed: bool, **metadata: float | int | str) -> dg.AssetCheckResult:
     return dg.AssetCheckResult(passed=passed, metadata=metadata)
 
@@ -120,11 +175,41 @@ def article_text_match_rate() -> dg.AssetCheckResult:
     return _check(rate >= 0.9, match_rate=round(rate, 4), matched=matched, total=df.height)
 
 
+@dg.asset_check(asset=communities)
+def every_article_in_one_community() -> dg.AssetCheckResult:
+    settings = get_settings()
+    ids = pl.read_parquet(processed(settings, "article_ids"))
+    m = pl.read_parquet(processed(settings, "article_communities"))
+    ok = m.height == ids.height and m["article_id"].n_unique() == ids.height
+    return _check(ok, articles=ids.height, assigned=m["article_id"].n_unique())
+
+
+@dg.asset_check(asset=edges_pruned)
+def pruned_out_degree_and_costs() -> dg.AssetCheckResult:
+    settings = get_settings()
+    df = pl.read_parquet(processed(settings, "edges_pruned"))
+    max_out = df.group_by("src_id").len().select(pl.col("len").max()).item()
+    min_cost = df.select(pl.col("cost").min()).item()
+    ok = max_out <= settings.prune_top_k and min_cost >= 0
+    return _check(ok, max_out_degree=max_out, min_cost=min_cost)
+
+
 defs = dg.Definitions(
-    assets=[clickstream_months, article_ids, articles, edges, article_text, chunks],
+    assets=[
+        clickstream_months,
+        article_ids,
+        articles,
+        edges,
+        article_text,
+        chunks,
+        communities,
+        edges_pruned,
+    ],
     asset_checks=[
         articles_titles_and_views,
         edges_counts_and_probabilities,
         article_text_match_rate,
+        every_article_in_one_community,
+        pruned_out_degree_and_costs,
     ],
 )

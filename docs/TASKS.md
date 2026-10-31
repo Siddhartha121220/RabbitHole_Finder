@@ -34,12 +34,12 @@ Rough timeline for a student working part-time with Claude Code: 5–7 weeks.
 **Acceptance:** DEV parquet files exist with logged row counts; asset checks pass; EDA notebook runs top to bottom.
 
 ## Phase 2 — Graph & communities
-- [ ] Undirected weighted graph; Leiden with resolution sweep; metrics table (§2.3).
-- [ ] Community labeling via c-TF-IDF + central article.
-- [ ] `reports/communities_sample.md` (20 random communities).
-- [ ] Pruned directed graph for serving (top-k out edges, hub cost penalty).
-- [ ] Notebook `02_communities`: Leiden vs HDBSCAN comparison.
-- [ ] Tests: Leiden deterministic with fixed seed on fixture graph; labeling picks central article.
+- [x] Undirected weighted graph; Leiden with resolution sweep; metrics table (§2.3).
+- [x] Community labeling via c-TF-IDF + central article.
+- [x] `reports/communities_sample.md` (20 random communities).
+- [x] Pruned directed graph for serving (top-k out edges, hub cost penalty).
+- [x] Notebook `02_communities`: Leiden vs HDBSCAN comparison.
+- [x] Tests: Leiden deterministic with fixed seed on fixture graph; labeling picks central article.
 
 **Acceptance:** sample communities look coherent (show the user `communities_sample.md` and ask for a thumbs up before continuing).
 

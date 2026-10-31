@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     dev_target_articles: int = 5000
     full_min_views: int = 1000
     max_download_bytes: int = 2 * 1024**3
+    leiden_resolutions: list[float] = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 12.0, 20.0]
+    leiden_resolution: float | None = None  # set to override the sweep's choice
+    prune_top_k: int = 10
+    hub_penalty: float = 0.1
 
     @property
     def months(self) -> list[str]:

@@ -4,7 +4,7 @@
 
 Most recommenders optimise for *more of the same*. This one optimises for **your next obsession**: a topic close enough to feel approachable, far enough to feel like a discovery, and deep enough to keep you busy for weeks. Every signal comes from how millions of people actually move through Wikipedia ([Wikimedia clickstream](https://meta.wikimedia.org/wiki/Research:Wikipedia_clickstream)), not from guesses.
 
-**Status:** in active development. Phases 0–1 (tooling, data ingestion, EDA) are done; the rest is specified and being built phase by phase. See [Project status](#project-status).
+**Status:** in active development. Phases 0–2 (tooling, data ingestion, EDA, click graph and communities) are done; the rest is specified and being built phase by phase. See [Project status](#project-status).
 
 ---
 
@@ -53,7 +53,7 @@ flowchart LR
 - **Two dataset sizes:** **DEV**, about 5,000 articles found by deterministic BFS from 25 seed topics across many domains (history, physics, cricket, Carnatic music, Zelda, sushi, Rust…), and **FULL**, every article with ≥ 1,000 monthly views (≈100k–300k).
 
 ### 2. Rabbit holes = communities in the click graph
-Articles become nodes; edge weights are click counts in both directions. **Leiden** community detection (resolution tuned by a sweep over modularity, size distribution and embedding coherence) splits the graph into topic clusters. Each cluster is labelled with its most central article plus c-TF-IDF keywords. A notebook compares this with HDBSCAN on text embeddings.
+Articles become nodes; edge weights are click counts in both directions. **Leiden** community detection splits the graph into topic clusters. The resolution is picked from a sweep by **modularity × topical coherence**: modularity alone gives a few giant clusters, coherence alone gives tiny ones. Each cluster is labelled with its most central article (the one members' readers most often move to) plus c-TF-IDF keywords. A notebook compares this with HDBSCAN on text vectors.
 
 ### 3. Rabbit-holeness score (the novel part)
 A rabbit hole is a topic where readers who enter **keep going and stay inside**. Clickstream lets us measure that directly:
@@ -98,7 +98,15 @@ Results will go in [docs/RESULTS.md](docs/RESULTS.md) once these phases are buil
 | Median onward-click ratio | 0.30 (readers click onward ~30% of the time) |
 | Median share of visits from search | 33% |
 
+| Leiden resolution (from sweep) | 4 |
+| Rabbit-hole candidates (communities with ≥ 8 articles) | 43, median 68 articles |
+| Share of clicks that stay inside a community | 71% |
+
 ![Views and onward ratio](reports/figures/01_views_onward.png)
+
+**Example communities found from clicks alone:** *Byzantine Empire* (Basil II, Justinian I, Alexios I Komnenos…), *Epic Cycle* (Little Iliad, Iliupersis, Aethiopis, Nostoi…), *Costa Concordia disaster* (Francesco Schettino, marine salvage, sinking of MV Sewol…), an SCP Foundation cluster (There Is No Antimemetics Division, information hazard, Lobotomy Corporation…; its central article is, amusingly, *Misanthropy*). See [reports/communities_sample.md](reports/communities_sample.md) and the sweep in [reports/leiden_sweep.md](reports/leiden_sweep.md).
+
+**Leiden vs HDBSCAN:** both find mostly the same topics (AMI ≈ 0.80). HDBSCAN on text discards 43% of articles as noise, mostly the bridging ones. On the same articles, Leiden's click-based clusters have higher modularity (0.635 vs 0.602), so Leiden defines the rabbit holes. Details are in [notebooks/02_communities.py](notebooks/02_communities.py).
 
 More charts in [reports/figures/](reports/figures/) and the EDA notebook [notebooks/01_eda.py](notebooks/01_eda.py).
 
@@ -108,8 +116,8 @@ More charts in [reports/figures/](reports/figures/) and the EDA notebook [notebo
 |---|---|---|
 | 0 | Scaffold, tooling, CI | ✅ done |
 | 1 | Clickstream ingestion, DEV subset, article text, chunks, data checks, EDA | ✅ done |
-| 2 | Click graph and Leiden communities | ⏳ next |
-| 3 | Embeddings, Postgres + pgvector, UMAP map | planned |
+| 2 | Click graph and Leiden communities | ✅ done |
+| 3 | Embeddings, Postgres + pgvector, UMAP map | ⏳ next |
 | 4 | Rabbit-holeness score and validation | planned |
 | 5 | Recommender v1 and evaluation harness | planned |
 | 6 | FastAPI service | planned |
@@ -163,7 +171,7 @@ To open the EDA notebook: `uv --directory backend run marimo edit ../notebooks/0
 ```
 backend/src/rabbithole/
   ingest/      clickstream download + parse, subset, stats, article text, chunking
-  graph/       graph build, communities, bridge paths        (Phase 2)
+  graph/       click graph, Leiden communities, labels, pruned serving graph
   embed/       embeddings + UMAP                             (Phase 3)
   scoring/     rabbit-holeness features + score              (Phase 4)
   recommend/   candidates, rankers, baselines                (Phase 5, 9)

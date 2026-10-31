@@ -13,6 +13,9 @@ dependencies = [
     "duckdb>=2.0.0",
     "polars>=2.1.0",
     "pydantic-settings>=2.16.2",
+    "python-igraph>=1.0.0",
+    "scikit-learn>=1.9.1",
+    "scipy>=1.18.1",
 ]
 
 [build-system]
@@ -38,10 +41,16 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
 
 [tool.pyright]
 include = ["src", "tests"]
-strict = ["src"]
+typeCheckingMode = "strict"
 pythonVersion = "3.12"
 venvPath = "."
 venv = ".venv"
+# igraph, scipy, scikit-learn and datasets ship without complete type hints. Strict mode stays on,
+# except for the rules that only report "this third-party value has an unknown type".
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -52,3 +61,4 @@ known-first-party = ["rabbithole"]
 [tool.ruff.lint.per-file-ignores]
 # marimo renders a cell's last bare expression as its output
 "**/notebooks/*.py" = ["B018"]
+"../notebooks/*.py" = ["B018"]

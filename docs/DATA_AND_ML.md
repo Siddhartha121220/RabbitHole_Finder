@@ -40,7 +40,7 @@ Typical student laptop: 16 GB RAM, no GPU. Everything must run on CPU. Embedding
 2. Run **Leiden** (igraph `community_leiden`, objective `modularity`, tune `resolution`).
 3. Choose resolution by a small sweep: target median community size 20–200 articles for FULL; report modularity, size distribution and coherence (mean intra-community embedding cosine) for each value. Record the choice in DECISIONS.md.
 4. Drop communities with < 8 articles from recommendation (keep them in the graph).
-5. **Labeling:** c-TF-IDF over member lead texts for keywords; the label is the title of the most central article (highest weighted in-degree inside the community) plus top keywords. Optionally generate a 3–6 word catchy `hook` with the LLM in a batch job (cached; template fallback = keywords).
+5. **Labeling:** c-TF-IDF over member lead texts for keywords; the label is the title of the most central article (highest summed transition probability `p` from other members; raw weighted in-degree let single huge edges dominate, see DECISIONS.md) plus top keywords. Optionally generate a 3–6 word catchy `hook` with the LLM in a batch job (cached; template fallback = keywords).
 6. Sanity check: print 20 random communities with top 10 titles into `reports/communities_sample.md`. They must look coherent to a human.
 
 Compare against HDBSCAN on embeddings in a notebook (briefly): which gives more coherent, more "rabbit-holey" groups? Report it; it is a good interview story.
