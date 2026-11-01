@@ -1,0 +1,909 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "Rabbit Hole Finder API",
+  "description": "Recommends Wikipedia rabbit holes from a few things you already love.",
+  "version": "0.1.0"
+ },
+ "paths": {
+  "/health": {
+   "get": {
+    "tags": [
+     "meta"
+    ],
+    "summary": "Health",
+    "operationId": "health_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Health"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/seeds/search": {
+   "post": {
+    "tags": [
+     "seeds"
+    ],
+    "summary": "Seed Search",
+    "description": "Articles matching a free-text interest (autocomplete).",
+    "operationId": "seed_search_seeds_search_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SeedSearchIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ArticleHitOut"
+         },
+         "type": "array",
+         "title": "Response Seed Search Seeds Search Post"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/recommend": {
+   "post": {
+    "tags": [
+     "recommend"
+    ],
+    "summary": "Recommend",
+    "description": "Heuristic v1: Goldilocks band x rabbit-holeness x bridge strength, MMR-diversified.",
+    "operationId": "recommend_recommend_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RecommendIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RecommendOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/rabbit-holes/{community_id}": {
+   "get": {
+    "tags": [
+     "rabbit holes"
+    ],
+    "summary": "Rabbit Hole",
+    "operationId": "rabbit_hole_rabbit_holes__community_id__get",
+    "parameters": [
+     {
+      "name": "community_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Community Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RabbitHoleDetail"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/rabbit-holes/{community_id}/trail": {
+   "post": {
+    "tags": [
+     "rabbit holes"
+    ],
+    "summary": "Trail",
+    "description": "Reading trail, gentle to deep: retrieval over the community's passages, an LLM picks\nand explains 5-7 steps from the retrieved ids only (template trail without an API key or\nwhen the output fails validation). Cached per (community, seeds, interests, model).",
+    "operationId": "trail_rabbit_holes__community_id__trail_post",
+    "parameters": [
+     {
+      "name": "community_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Community Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TrailIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TrailOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/map": {
+   "get": {
+    "tags": [
+     "map"
+    ],
+    "summary": "Map Points",
+    "description": "Every eligible rabbit hole with its map position (gzip-compressed when large).",
+    "operationId": "map_points_map_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/MapPoint"
+         },
+         "type": "array",
+         "title": "Response Map Points Map Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/feedback": {
+   "post": {
+    "tags": [
+     "feedback"
+    ],
+    "summary": "Feedback",
+    "operationId": "feedback_feedback_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/FeedbackIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": {
+          "type": "string"
+         },
+         "type": "object",
+         "title": "Response Feedback Feedback Post"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "ArticleHitOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "url": {
+      "type": "string",
+      "title": "Url"
+     },
+     "community_id": {
+      "type": "integer",
+      "title": "Community Id"
+     },
+     "similarity": {
+      "type": "number",
+      "title": "Similarity"
+     },
+     "x": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "X"
+     },
+     "y": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Y"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "title",
+     "url",
+     "community_id",
+     "similarity"
+    ],
+    "title": "ArticleHitOut"
+   },
+   "ArticleRef": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "url": {
+      "type": "string",
+      "title": "Url"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "title",
+     "url"
+    ],
+    "title": "ArticleRef"
+   },
+   "FeatureValue": {
+    "properties": {
+     "value": {
+      "type": "number",
+      "title": "Value"
+     },
+     "z": {
+      "type": "number",
+      "title": "Z"
+     }
+    },
+    "type": "object",
+    "required": [
+     "value",
+     "z"
+    ],
+    "title": "FeatureValue"
+   },
+   "FeedbackIn": {
+    "properties": {
+     "session_id": {
+      "type": "string",
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Session Id"
+     },
+     "community_id": {
+      "type": "integer",
+      "title": "Community Id"
+     },
+     "seed_titles": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "maxItems": 10,
+      "title": "Seed Titles"
+     },
+     "surprise": {
+      "type": "number",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Surprise"
+     },
+     "rating": {
+      "type": "string",
+      "enum": [
+       "up",
+       "down",
+       "obsessed"
+      ],
+      "title": "Rating"
+     }
+    },
+    "type": "object",
+    "required": [
+     "session_id",
+     "community_id",
+     "surprise",
+     "rating"
+    ],
+    "title": "FeedbackIn"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "Health": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "ok",
+       "degraded"
+      ],
+      "title": "Status"
+     },
+     "database": {
+      "type": "boolean",
+      "title": "Database"
+     },
+     "model_loaded": {
+      "type": "boolean",
+      "title": "Model Loaded"
+     },
+     "catalog_loaded": {
+      "type": "boolean",
+      "title": "Catalog Loaded"
+     },
+     "communities": {
+      "type": "integer",
+      "title": "Communities"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status",
+     "database",
+     "model_loaded",
+     "catalog_loaded",
+     "communities"
+    ],
+    "title": "Health"
+   },
+   "MapPoint": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "size": {
+      "type": "integer",
+      "title": "Size"
+     },
+     "rh_score": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rh Score"
+     },
+     "x": {
+      "type": "number",
+      "title": "X"
+     },
+     "y": {
+      "type": "number",
+      "title": "Y"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "label",
+     "size",
+     "rh_score",
+     "x",
+     "y"
+    ],
+    "title": "MapPoint"
+   },
+   "RabbitHoleDetail": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "keywords": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Keywords"
+     },
+     "size": {
+      "type": "integer",
+      "title": "Size"
+     },
+     "rh_score": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rh Score"
+     },
+     "rh_breakdown": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/FeatureValue"
+      },
+      "type": "object",
+      "title": "Rh Breakdown"
+     },
+     "top_articles": {
+      "items": {
+       "$ref": "#/components/schemas/ArticleRef"
+      },
+      "type": "array",
+      "title": "Top Articles"
+     },
+     "central_article": {
+      "$ref": "#/components/schemas/ArticleRef"
+     },
+     "about": {
+      "type": "string",
+      "title": "About"
+     },
+     "umap_x": {
+      "type": "number",
+      "title": "Umap X"
+     },
+     "umap_y": {
+      "type": "number",
+      "title": "Umap Y"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "label",
+     "keywords",
+     "size",
+     "rh_score",
+     "rh_breakdown",
+     "top_articles",
+     "central_article",
+     "about",
+     "umap_x",
+     "umap_y"
+    ],
+    "title": "RabbitHoleDetail"
+   },
+   "RecommendIn": {
+    "properties": {
+     "interests": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "maxItems": 5,
+      "minItems": 1,
+      "title": "Interests"
+     },
+     "surprise": {
+      "type": "number",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Surprise",
+      "default": 0.5
+     },
+     "k": {
+      "type": "integer",
+      "maximum": 10.0,
+      "minimum": 1.0,
+      "title": "K",
+      "default": 5
+     },
+     "session_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 64
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Session Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "interests"
+    ],
+    "title": "RecommendIn"
+   },
+   "RecommendOut": {
+    "properties": {
+     "seeds": {
+      "items": {
+       "$ref": "#/components/schemas/ArticleHitOut"
+      },
+      "type": "array",
+      "title": "Seeds"
+     },
+     "rabbit_holes": {
+      "items": {
+       "$ref": "#/components/schemas/Recommendation"
+      },
+      "type": "array",
+      "title": "Rabbit Holes"
+     }
+    },
+    "type": "object",
+    "required": [
+     "seeds",
+     "rabbit_holes"
+    ],
+    "title": "RecommendOut"
+   },
+   "Recommendation": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "keywords": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Keywords"
+     },
+     "size": {
+      "type": "integer",
+      "title": "Size"
+     },
+     "rh_score": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rh Score"
+     },
+     "rh_breakdown": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/FeatureValue"
+      },
+      "type": "object",
+      "title": "Rh Breakdown"
+     },
+     "top_articles": {
+      "items": {
+       "$ref": "#/components/schemas/ArticleRef"
+      },
+      "type": "array",
+      "title": "Top Articles"
+     },
+     "hook": {
+      "type": "string",
+      "title": "Hook"
+     },
+     "x": {
+      "type": "number",
+      "title": "X"
+     },
+     "y": {
+      "type": "number",
+      "title": "Y"
+     },
+     "bridge_path": {
+      "items": {
+       "$ref": "#/components/schemas/ArticleRef"
+      },
+      "type": "array",
+      "title": "Bridge Path"
+     },
+     "why": {
+      "type": "string",
+      "title": "Why"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "label",
+     "keywords",
+     "size",
+     "rh_score",
+     "rh_breakdown",
+     "top_articles",
+     "hook",
+     "x",
+     "y",
+     "bridge_path",
+     "why"
+    ],
+    "title": "Recommendation"
+   },
+   "SeedSearchIn": {
+    "properties": {
+     "query": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Query"
+     },
+     "k": {
+      "type": "integer",
+      "maximum": 20.0,
+      "minimum": 1.0,
+      "title": "K",
+      "default": 8
+     }
+    },
+    "type": "object",
+    "required": [
+     "query"
+    ],
+    "title": "SeedSearchIn"
+   },
+   "TrailIn": {
+    "properties": {
+     "interests": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "maxItems": 5,
+      "title": "Interests"
+     },
+     "seed_titles": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "maxItems": 10,
+      "title": "Seed Titles"
+     },
+     "bridge_article_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "maxItems": 10,
+      "title": "Bridge Article Ids"
+     }
+    },
+    "type": "object",
+    "title": "TrailIn"
+   },
+   "TrailOut": {
+    "properties": {
+     "rabbit_hole_id": {
+      "type": "integer",
+      "title": "Rabbit Hole Id"
+     },
+     "model": {
+      "type": "string",
+      "title": "Model"
+     },
+     "intro": {
+      "type": "string",
+      "title": "Intro"
+     },
+     "steps": {
+      "items": {
+       "$ref": "#/components/schemas/TrailStep"
+      },
+      "type": "array",
+      "title": "Steps"
+     }
+    },
+    "type": "object",
+    "required": [
+     "rabbit_hole_id",
+     "model",
+     "intro",
+     "steps"
+    ],
+    "title": "TrailOut"
+   },
+   "TrailStep": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "url": {
+      "type": "string",
+      "title": "Url"
+     },
+     "why": {
+      "type": "string",
+      "title": "Why"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "title",
+     "url",
+     "why"
+    ],
+    "title": "TrailStep"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  }
+ }
+}

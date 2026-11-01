@@ -1,0 +1,2 @@
+allowBuilds:
+  unrs-resolver: false  # prebuilt native binary ships in an optional dependency

@@ -25,6 +25,8 @@ from rabbithole.scoring.labels import first_sentence
 log = logging.getLogger("rabbithole.api")
 router = APIRouter()
 HOLES: list[str | Enum] = ["rabbit holes"]
+# Bump when trail building changes, so cached trails from older logic are not served.
+TRAIL_CACHE_VERSION = "v:2"
 
 
 def services(request: Request) -> Services:
@@ -151,13 +153,27 @@ def recommend(body: s.RecommendIn, svc: Svc) -> s.RecommendOut:
         comms = {c.id: c for c in db.scalars(select(Community).where(Community.id.in_(ids)))}
         wanted = {a for p in paths.values() for a in p}
         wanted |= {a for c in comms.values() for a in c.top_article_ids[:5]}
+        wanted |= {c.central_article_id for c in comms.values()} | {h.article_id for h in seeds}
         arts = _articles(db, wanted)
+        seeds_out = [
+            _hit(h).model_copy(
+                update={"x": arts[h.article_id].umap_x, "y": arts[h.article_id].umap_y}
+            )
+            for h in seeds
+        ]
         out: list[s.Recommendation] = []
         for j, cid in zip(picks, ids, strict=True):
             c = comms[cid]
             path = [_ref(arts[a]) for a in paths[j]]
             out.append(
-                s.Recommendation(**_summary(c, arts), bridge_path=path, why=why(path, c.rh_score))
+                s.Recommendation(
+                    **_summary(c, arts),
+                    hook=first_sentence(arts[c.central_article_id].lead_text, max_chars=200),
+                    x=c.umap_x,
+                    y=c.umap_y,
+                    bridge_path=path,
+                    why=why(path, c.rh_score),
+                )
             )
         db.add(
             RecommendationLog(
@@ -169,7 +185,7 @@ def recommend(body: s.RecommendIn, svc: Svc) -> s.RecommendOut:
             )
         )
         db.commit()
-    return s.RecommendOut(seeds=[_hit(h) for h in seeds], rabbit_holes=out)
+    return s.RecommendOut(seeds=seeds_out, rabbit_holes=out)
 
 
 @router.get("/rabbit-holes/{community_id}", response_model=s.RabbitHoleDetail, tags=HOLES)
@@ -199,7 +215,9 @@ def trail(community_id: int, body: s.TrailIn, request: Request, svc: Svc) -> s.T
         c = _community(db, community_id)
         names = [t.strip().replace(" ", "_") for t in body.seed_titles]
         seed_ids = set(db.scalars(select(Article.id).where(Article.title.in_(names))))
-        key = _sha([*map(str, sorted(seed_ids)), *(f"i:{i}" for i in body.interests)])
+        key = _sha(
+            [TRAIL_CACHE_VERSION, *map(str, sorted(seed_ids)), *(f"i:{i}" for i in body.interests)]
+        )
         cached = db.scalars(
             select(Trail.payload).where(
                 Trail.community_id == community_id,

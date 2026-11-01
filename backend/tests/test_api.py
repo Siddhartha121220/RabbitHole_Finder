@@ -204,6 +204,8 @@ def test_recommend_returns_bridge_path_from_our_table_and_logs(
     urls = {a["url"] for h in holes.values() for a in h["bridge_path"] + h["top_articles"]}
     assert urls <= {loader.wiki_url(t) for t in TITLES}
     assert holes[1]["rh_breakdown"]["stickiness"] == {"value": 0.5, "z": 0.1}
+    assert holes[1]["hook"] == "A2 is a test article." and holes[1]["x"] == 0.5
+    assert body["seeds"][0]["x"] == 0.1
     assert count(engine, "recommendation_log") == before + 1
     with engine.connect() as conn:
         stored = conn.execute(text("SELECT interests_hash FROM recommendation_log")).scalar_one()

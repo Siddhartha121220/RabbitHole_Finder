@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+/* "Descending into a burrow": parchment and soil strata by day, a lantern-lit burrow by
+   night. Colours are tokens; components only use the semantic names below. */
+:root {
+  --surface: #f4ede1;
+  --surface-deep: #e4d4b8;
+  --card: #fbf7ef;
+  --ink: #2a1f14;
+  --ink-soft: #6b5843;
+  --line: #d6c4a6;
+  --rust: #a8481a;
+  --moss: #2f6b5a;
+  --lantern: #c98a1c;
+  --shaft: #3a2b1e;
+  --danger: #a3261b;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #17110c;
+    --surface-deep: #0b0805;
+    --card: #211810;
+    --ink: #f1e6d3;
+    --ink-soft: #b9a68c;
+    --line: #3d2f22;
+    --rust: #e58049;
+    --moss: #63b79e;
+    --lantern: #f2b84b;
+    --shaft: #0a0704;
+    --danger: #f07167;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --surface: #17110c;
+  --surface-deep: #0b0805;
+  --card: #211810;
+  --ink: #f1e6d3;
+  --ink-soft: #b9a68c;
+  --line: #3d2f22;
+  --rust: #e58049;
+  --moss: #63b79e;
+  --lantern: #f2b84b;
+  --shaft: #0a0704;
+  --danger: #f07167;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-deep: var(--surface-deep);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-rust: var(--rust);
+  --color-moss: var(--moss);
+  --color-lantern: var(--lantern);
+  --color-shaft: var(--shaft);
+  --color-danger: var(--danger);
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-instrument), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+/* The page gets darker the further down you scroll: soil strata. */
+body {
+  background-color: var(--surface);
+  background-image: linear-gradient(
+    to bottom,
+    var(--surface) 0,
+    var(--surface) 28rem,
+    color-mix(in oklab, var(--surface) 70%, var(--surface-deep)) 60rem,
+    var(--surface-deep) 120rem
+  );
+  background-attachment: scroll;
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+/* Faint horizontal strata lines behind everything. */
+.strata {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 46px,
+    color-mix(in oklab, var(--line) 45%, transparent) 46px 47px
+  );
+}
+
+:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: rise 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}

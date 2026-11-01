@@ -22,3 +22,31 @@ jobs:
       - run: uv --directory backend sync --locked
       - run: make lint
       - run: make test
+      - name: OpenAPI schema committed for the frontend is up to date
+        run: |
+          uv --directory backend run python -c "import json; from rabbithole.api.app import app; print(json.dumps(app.openapi(), indent=1))" > frontend/openapi.json
+          git diff --exit-code frontend/openapi.json
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+        env:
+          CI: "1"

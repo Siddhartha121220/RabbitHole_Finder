@@ -93,11 +93,11 @@ Rough timeline for a student working part-time with Claude Code: 5–7 weeks.
 **Acceptance:** trails work with and without `ANTHROPIC_API_KEY`; link validity 100% in tests; faithfulness numbers in RESULTS.md.
 
 ## Phase 8 — Frontend
-- [ ] Next.js app, TypeScript strict, Tailwind, typed API client generated from OpenAPI (`openapi-typescript`).
-- [ ] Pages and components from ARCHITECTURE §7; distinctive visual direction; light/dark; mobile.
-- [ ] Map with deck.gl; seeds highlighted; click a community → detail.
-- [ ] Feedback buttons wired; anonymous session id.
-- [ ] Frontend CI job: typecheck, lint, build; a couple of Playwright smoke tests.
+- [x] Next.js app, TypeScript strict, Tailwind, typed API client generated from OpenAPI (`openapi-typescript`).
+- [x] Pages and components from ARCHITECTURE §7; distinctive visual direction; light/dark; mobile.
+- [x] Map with deck.gl; seeds highlighted; click a community → detail.
+- [x] Feedback buttons wired; anonymous session id.
+- [x] Frontend CI job: typecheck, lint, build; a couple of Playwright smoke tests.
 
 **Acceptance:** full flow works locally against the DEV API; screenshot set saved to `reports/screens/`.
 

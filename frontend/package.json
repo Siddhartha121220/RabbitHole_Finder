@@ -1,0 +1,39 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "gen:api": "openapi-typescript openapi.json -o src/lib/api-types.ts",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test --project=smoke",
+    "screens": "playwright test --project=screens"
+  },
+  "dependencies": {
+    "@deck.gl/core": "9.4.1",
+    "@deck.gl/layers": "9.4.1",
+    "@deck.gl/react": "9.4.1",
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.3",
+    "openapi-typescript": "7.13.0",
+    "tailwindcss": "^4",
+    "typescript": "6.0.3"
+  },
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=20.9"
+  }
+}

@@ -95,3 +95,5 @@ def test_first_sentence() -> None:
     assert labels.first_sentence(lead) == "Chess is a board game for two players."
     assert labels.first_sentence(lead, max_chars=10) == "Chess is…"
     assert labels.first_sentence(None) == ""
+    film = "Adipurush (transl. First man) is a 2023 film. It was panned."
+    assert labels.first_sentence(film) == "Adipurush (transl. First man) is a 2023 film."

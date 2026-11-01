@@ -14,12 +14,19 @@ SCALE = 7  # 1 = not at all ... 7 = absolutely; 7 points give more spread than 5
 def first_sentence(text: str | None, max_chars: int = 200) -> str:
     """Opening sentence of a lead, shortened for one-line display.
 
-    ponytail: splits at ". " followed by a capital letter, so "J. P. Morgan" can cut early;
-    fine for a hint line.
+    Splits at ". " + capital letter, but never inside parentheses, so the "(transl. ...)"
+    and "(lit. ...)" asides in Wikipedia leads stay whole.
+    ponytail: "J. P. Morgan" outside parentheses can still cut early; fine for a hint line.
     """
     if not text:
         return ""
-    sentence = re.split(r"(?<=[.!?])\s+(?=[A-Z])", text.strip(), maxsplit=1)[0]
+    text = text.strip()
+    sentence = text
+    for m in re.finditer(r"(?<=[.!?])\s+(?=[A-Z])", text):
+        head = text[: m.start()]
+        if head.count("(") <= head.count(")"):
+            sentence = head
+            break
     return sentence if len(sentence) <= max_chars else sentence[: max_chars - 1].rstrip() + "…"
 
 

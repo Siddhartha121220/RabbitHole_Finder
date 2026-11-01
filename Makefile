@@ -1,5 +1,5 @@
 UV := uv --directory backend
-.PHONY: setup up down lint test migrate pipeline-dev pipeline dagster-ui api web eval
+.PHONY: setup up down lint test migrate pipeline-dev pipeline dagster-ui api web eval api-types
 
 setup:
 	$(UV) sync
@@ -42,4 +42,9 @@ api:
 	$(UV) run uvicorn rabbithole.api.app:app --reload --port 8000
 
 web:
-	@echo "$@: not implemented yet (see docs/TASKS.md)"
+	cd frontend && pnpm dev
+
+# Regenerate frontend/openapi.json and the typed client from the FastAPI schema.
+api-types:
+	$(UV) run python -c "import json; from rabbithole.api.app import app; print(json.dumps(app.openapi(), indent=1))" > frontend/openapi.json
+	cd frontend && pnpm gen:api

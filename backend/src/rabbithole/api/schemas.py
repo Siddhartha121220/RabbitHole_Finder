@@ -15,6 +15,8 @@ class ArticleRef(BaseModel):
 class ArticleHitOut(ArticleRef):
     community_id: int
     similarity: float
+    x: float | None = None  # map position (filled by /recommend so seeds can glow on the map)
+    y: float | None = None
 
 
 class SeedSearchIn(BaseModel):
@@ -45,6 +47,9 @@ class RabbitHoleSummary(BaseModel):
 
 
 class Recommendation(RabbitHoleSummary):
+    hook: str  # opening sentence of the community's central article
+    x: float
+    y: float
     bridge_path: list[ArticleRef]  # seed -> ... -> entry article; empty if none within 4 hops
     why: str
 
