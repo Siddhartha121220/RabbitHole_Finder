@@ -4,7 +4,7 @@
 
 Most recommenders optimise for *more of the same*. This one optimises for **your next obsession**: a topic close enough to feel approachable, far enough to feel like a discovery, and deep enough to keep you busy for weeks. Every signal comes from how millions of people actually move through Wikipedia ([Wikimedia clickstream](https://meta.wikimedia.org/wiki/Research:Wikipedia_clickstream)), not from guesses.
 
-**Status:** in active development. Phases 0–5 (tooling, data ingestion, EDA, click graph and communities, embeddings, vector database, map coordinates, rabbit-holeness score, recommender v1 and offline evaluation) are done; the rest is specified and being built phase by phase. See [Project status](#project-status).
+**Status:** in active development. Phases 0–6 (tooling, data ingestion, EDA, click graph and communities, embeddings, vector database, map coordinates, rabbit-holeness score, recommender v1, offline evaluation and the FastAPI service) are done; the rest is specified and being built phase by phase. See [Project status](#project-status).
 
 ---
 
@@ -136,6 +136,18 @@ Nearest neighbour wins accuracy, as it should: the label is "where readers went 
 
 More charts in [reports/figures/](reports/figures/) and the EDA notebook [notebooks/01_eda.py](notebooks/01_eda.py).
 
+**API** ([reports/api_latency.md](reports/api_latency.md)): `/recommend` answers in ≈ 100–175 ms median and ≈ 165–260 ms p95 on a laptop CPU, embedding included, against an 800 ms target. Example response for *Byzantine Empire + chess*: the *Titanic* rabbit hole, because "readers of *Rook (chess)* reach *Stornoway* in 2 clicks via *Lewis chessmen*. Deeper than 68% of rabbit holes."
+
+| Endpoint | Does |
+|---|---|
+| `GET /health` | DB, encoder and catalog readiness |
+| `POST /seeds/search` | free text → matching articles (autocomplete) |
+| `POST /recommend` | 1–5 interests + surprise → rabbit holes with score breakdown, bridge path, top articles, "why" |
+| `GET /rabbit-holes/{id}` | detail: about, central article, top articles, map position |
+| `POST /rabbit-holes/{id}/trail` | reading trail (template now, RAG in Phase 7), cached, rate-limited |
+| `GET /map` | every rabbit hole with map position, size and score |
+| `POST /feedback` | 👍 / 👎 / "obsessed" |
+
 ## Project status
 
 | Phase | What | Status |
@@ -146,8 +158,8 @@ More charts in [reports/figures/](reports/figures/) and the EDA notebook [notebo
 | 3 | Embeddings, Postgres + pgvector, UMAP map | ✅ done |
 | 4 | Rabbit-holeness score and validation | ✅ done (human labels pending) |
 | 5 | Recommender v1 and evaluation harness | ✅ done |
-| 6 | FastAPI service | ⏳ next |
-| 7 | RAG trails | planned |
+| 6 | FastAPI service | ✅ done |
+| 7 | RAG trails | ⏳ next |
 | 8 | Next.js frontend with deck.gl map | planned |
 | 9 | FULL dataset and learning-to-rank v2 | planned |
 | 10 | Deploy, user study, write-up | planned |
@@ -191,7 +203,9 @@ make pipeline-dev         # build the DEV dataset (downloads ~1.5 GB of clickstr
 | `make test` | pytest |
 | `uv --directory backend run rabbithole label-communities --n 100` | Rate communities 1–7, blind to the score, with a short description of each community and article (resumable) |
 | `make eval` | Offline evaluation of all systems → `reports/eval_<date>.md` + chart, logged to MLflow (http://localhost:5000) |
-| `make api`, `make web` | API and frontend (coming in Phases 6 and 8) |
+| `make api` | FastAPI on http://localhost:8000, interactive docs at `/docs` |
+| `uv --directory backend run python ../scripts/latency.py` | p50/p95 of `/recommend` over 100 random queries (API must be running) → `reports/api_latency.md` |
+| `make web` | Frontend (coming in Phase 8) |
 
 To open a notebook: `uv --directory backend run marimo edit ../notebooks/01_eda.py`
 
@@ -222,10 +236,11 @@ backend/src/rabbithole/
   rag/, llm/   trail retrieval, generation, validation       (Phase 7)
   eval/        future-walk labels, metrics, bootstrap, report + MLflow (Phase 5)
   db/          Postgres models, idempotent loader (migrations in backend/alembic/)
-  api/         FastAPI                                       (Phase 6)
+  api/         FastAPI app, routes, schemas, JSON logging, rate limit (Phase 6)
   pipelines/   Dagster asset definitions
 backend/tests/ pytest suite with tiny fixture data
 notebooks/     marimo notebooks (EDA, community and score analysis)
+scripts/       one-off tools (API latency check)
 reports/       generated reports and figures
 docs/          PRD, architecture, data & ML spec, tasks, decisions, results
 ```

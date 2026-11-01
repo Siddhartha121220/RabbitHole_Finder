@@ -106,7 +106,7 @@ pipeline_runs(id PK, dataset_mode, clickstream_months, started_at, finished_at, 
 Use HNSW indexes on embedding columns (cosine). Vector dimension must follow the configured model; read it from the model at load time.
 
 ### In-memory at API startup
-The pruned edge list is loaded into an igraph `Graph` for bridge-path search. Memory budget for the deployed instance: **≤ 1 GB total**. If the FULL graph does not fit, precompute per-community entry articles and restrict search to 3 hops.
+The pruned edge list is loaded into a SciPy sparse matrix (multi-source Dijkstra via `scipy.sparse.csgraph`) for bridge-path search, together with community centroids, scores and article→community ids: the same `Catalog` object the offline evaluation uses. *(Phase 5/6: igraph replaced by csgraph, which does multi-source shortest paths with predecessors in one C call.)* Memory budget for the deployed instance: **≤ 1 GB total**. If the FULL graph does not fit, precompute per-community entry articles and restrict search to 3 hops.
 
 ## 5. API (FastAPI, all JSON, Pydantic v2 schemas)
 

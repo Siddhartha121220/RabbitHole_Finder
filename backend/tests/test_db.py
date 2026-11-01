@@ -3,46 +3,19 @@
 Uses a separate `rabbithole_test` database and skips if Postgres is not reachable.
 """
 
-from collections.abc import Iterator
-
 import numpy as np
 import polars as pl
-import pytest
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine, make_url
+from sqlalchemy import text
+from sqlalchemy.engine import Engine
 
 from rabbithole.config import get_settings
-from rabbithole.db import loader, session
+from rabbithole.db import loader
 from rabbithole.embed.search import nearest_articles
 
 DIM = get_settings().embedding_dim
 
 
-@pytest.fixture(scope="module")
-def engine(monkeypatch_module: pytest.MonkeyPatch) -> Iterator[Engine]:
-    url = make_url(get_settings().database_url)
-    admin = create_engine(url, isolation_level="AUTOCOMMIT")
-    try:
-        with admin.connect() as conn:
-            conn.execute(text("DROP DATABASE IF EXISTS rabbithole_test WITH (FORCE)"))
-            conn.execute(text("CREATE DATABASE rabbithole_test"))
-    except Exception as e:
-        pytest.skip(f"Postgres not reachable: {e}")
-    test_url = url.set(database="rabbithole_test").render_as_string(hide_password=False)
-    monkeypatch_module.setenv("DATABASE_URL", test_url)
-    get_settings.cache_clear()
-    session.get_engine.cache_clear()
-    loader.migrate()
-    yield session.get_engine()
-    session.get_engine.cache_clear()
-    get_settings.cache_clear()
-
-
-@pytest.fixture(scope="module")
-def monkeypatch_module() -> Iterator[pytest.MonkeyPatch]:
-    mp = pytest.MonkeyPatch()
-    yield mp
-    mp.undo()
+DB_NAME = "rabbithole_test"  # read by the `engine` fixture in conftest
 
 
 def unit(i: int) -> list[float]:

@@ -102,3 +102,17 @@ class PipelineRun(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     stats: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class RecommendationLog(Base):
+    """One row per /recommend call. Interests are stored only as a SHA-256 of the
+    normalised strings: enough to count repeats, nothing a person typed is kept."""
+
+    __tablename__ = "recommendation_log"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    interests_hash: Mapped[str] = mapped_column(Text)
+    n_interests: Mapped[int] = mapped_column(Integer)
+    surprise: Mapped[float] = mapped_column(REAL)
+    community_ids: Mapped[list[int]] = mapped_column(ARRAY(Integer))
+    latency_ms: Mapped[float] = mapped_column(REAL)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     goldilocks_sigma: float = 0.12
     mmr_lambda: float = 0.7
     eval_queries: int = 500
+    # API (ARCHITECTURE §5).
+    frontend_origin: str = "http://localhost:3000"
+    trail_rate_per_minute: int = 10
     eval_bootstrap: int = 1000
 
     @property

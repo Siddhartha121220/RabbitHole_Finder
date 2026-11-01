@@ -38,5 +38,8 @@ dagster-ui:
 eval:
 	$(UV) run rabbithole eval
 
-api web:
+api:
+	$(UV) run uvicorn rabbithole.api.app:app --reload --port 8000
+
+web:
 	@echo "$@: not implemented yet (see docs/TASKS.md)"

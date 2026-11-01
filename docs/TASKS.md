@@ -74,12 +74,12 @@ Rough timeline for a student working part-time with Claude Code: 5–7 weeks.
 **Acceptance:** `make eval` produces `reports/eval_<date>.md`; heuristic v1 compared against baselines with CIs. It is fine if v1 does not win on every metric; write down why.
 
 ## Phase 6 — API
-- [ ] FastAPI app with routers and Pydantic schemas (ARCHITECTURE §5).
-- [ ] Startup: load pruned graph + model artifacts; `/health` reports readiness.
-- [ ] Structured logging with request id + latency; CORS; rate limit on trail endpoint.
-- [ ] Recommendation request log (no personal data).
-- [ ] API tests with `httpx` test client against a test DB loaded from fixtures (use testcontainers or the compose DB with a separate schema).
-- [ ] Latency check script: p50/p95 for `/recommend` over 100 random queries.
+- [x] FastAPI app with routers and Pydantic schemas (ARCHITECTURE §5).
+- [x] Startup: load pruned graph + model artifacts; `/health` reports readiness.
+- [x] Structured logging with request id + latency; CORS; rate limit on trail endpoint.
+- [x] Recommendation request log (no personal data).
+- [x] API tests with `httpx` test client against a test DB loaded from fixtures (use testcontainers or the compose DB with a separate schema).
+- [x] Latency check script: p50/p95 for `/recommend` over 100 random queries.
 
 **Acceptance:** all endpoints documented in `/docs`; `/recommend` p95 < 800 ms on DEV locally.
 
