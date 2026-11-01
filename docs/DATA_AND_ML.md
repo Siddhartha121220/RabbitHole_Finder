@@ -71,7 +71,7 @@ For community C with members 1..m, let Q be the m×m matrix of **per-visit** tra
 ### 3.4 Validating the score (no ground truth, so triangulate)
 - Correlation matrix of features; drop or merge features with |r| > 0.85.
 - **Face validity:** top 20 and bottom 20 communities by score into `reports/rh_extremes.md`. Top should look like classic rabbit holes (e.g. SCP lore, shipwrecks, conlangs); bottom should look like shallow clusters (e.g. TV episode lists).
-- **Human labels:** a small labeling script/CLI where the user rates 100 random communities 1–5 for "would this be a rabbit hole?" Report Spearman ρ between `rh_score` and labels; optionally learn weights with ridge regression on these labels (cross-validated) and compare.
+- **Human labels:** a small labeling script/CLI where the user rates 100 random communities 1–7 for "would this be a rabbit hole?" (blind to the score, with a one-line description of the community and of each listed article) Report Spearman ρ between `rh_score` and labels; optionally learn weights with ridge regression on these labels (cross-validated) and compare.
 
 ## 4. Recommender
 

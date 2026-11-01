@@ -1,12 +1,26 @@
-"""Human labels for validating the score: "would this be a rabbit hole?" rated 1-5."""
+"""Human labels for validating the score: "would this be a rabbit hole?" rated 1-7."""
 
 import csv
 import random
+import re
 from pathlib import Path
 
 import polars as pl
 
 FIELDS = ["community_id", "label", "rating"]
+SCALE = 7  # 1 = not at all ... 7 = absolutely; 7 points give more spread than 5 for Spearman
+
+
+def first_sentence(text: str | None, max_chars: int = 200) -> str:
+    """Opening sentence of a lead, shortened for one-line display.
+
+    ponytail: splits at ". " followed by a capital letter, so "J. P. Morgan" can cut early;
+    fine for a hint line.
+    """
+    if not text:
+        return ""
+    sentence = re.split(r"(?<=[.!?])\s+(?=[A-Z])", text.strip(), maxsplit=1)[0]
+    return sentence if len(sentence) <= max_chars else sentence[: max_chars - 1].rstrip() + "…"
 
 
 def read_labels(path: Path) -> pl.DataFrame:
@@ -28,8 +42,8 @@ def to_label(communities: pl.DataFrame, path: Path, n: int, seed: int = 11) -> l
 
 
 def append_label(path: Path, community_id: int, label: str, rating: int) -> None:
-    if not 1 <= rating <= 5:
-        raise ValueError("rating must be 1-5")
+    if not 1 <= rating <= SCALE:
+        raise ValueError(f"rating must be 1-{SCALE}")
     new = not path.exists()
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", newline="") as f:

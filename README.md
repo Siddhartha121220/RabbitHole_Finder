@@ -174,7 +174,7 @@ make pipeline-dev         # build the DEV dataset (downloads ~1.5 GB of clickstr
 | `make dagster-ui` | Open the Dagster UI to inspect assets and checks |
 | `make lint` | ruff check, ruff format, pyright |
 | `make test` | pytest |
-| `uv --directory backend run rabbithole label-communities --n 100` | Rate communities 1–5, blind to the score (resumable) |
+| `uv --directory backend run rabbithole label-communities --n 100` | Rate communities 1–7, blind to the score, with a short description of each community and article (resumable) |
 | `make api`, `make web`, `make eval` | API, frontend, offline evaluation (coming in later phases) |
 
 To open a notebook: `uv --directory backend run marimo edit ../notebooks/01_eda.py`

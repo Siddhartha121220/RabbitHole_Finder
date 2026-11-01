@@ -85,5 +85,13 @@ def test_labels_resume_and_validate(tmp_path: Path) -> None:
     labels.append_label(path, first[0], "Chess", 4)
     assert labels.to_label(comms, path, n=3) == first[1:]  # resumes in the same order
     assert labels.read_labels(path)["rating"].to_list() == [4]
+    labels.append_label(path, first[1], "Sushi", 7)  # 7-point scale
     with pytest.raises(ValueError):
-        labels.append_label(path, first[1], "x", 6)
+        labels.append_label(path, first[2], "x", 8)
+
+
+def test_first_sentence() -> None:
+    lead = "Chess is a board game for two players. It is played on an 8x8 board."
+    assert labels.first_sentence(lead) == "Chess is a board game for two players."
+    assert labels.first_sentence(lead, max_chars=10) == "Chess is…"
+    assert labels.first_sentence(None) == ""
