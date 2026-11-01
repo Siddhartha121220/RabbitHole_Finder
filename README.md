@@ -4,7 +4,7 @@
 
 Most recommenders optimise for *more of the same*. This one optimises for **your next obsession**: a topic close enough to feel approachable, far enough to feel like a discovery, and deep enough to keep you busy for weeks. Every signal comes from how millions of people actually move through Wikipedia ([Wikimedia clickstream](https://meta.wikimedia.org/wiki/Research:Wikipedia_clickstream)), not from guesses.
 
-**Status:** in active development. Phases 0–4 (tooling, data ingestion, EDA, click graph and communities, embeddings, vector database, map coordinates, rabbit-holeness score) are done; the rest is specified and being built phase by phase. See [Project status](#project-status).
+**Status:** in active development. Phases 0–5 (tooling, data ingestion, EDA, click graph and communities, embeddings, vector database, map coordinates, rabbit-holeness score, recommender v1 and offline evaluation) are done; the rest is specified and being built phase by phase. See [Project status](#project-status).
 
 ---
 
@@ -71,7 +71,7 @@ The score is a weighted mean of z-scores (expected depth counts double), turned 
 
 ### 4. Recommender
 - **Seeds:** your free-text interests are embedded (`BAAI/bge-small-en-v1.5`) and matched to articles with pgvector.
-- **Candidates:** every other cluster, with its semantic distance, graph distance (most-probable path, hubs penalised) and bridge strength.
+- **Candidates:** every other cluster, with its semantic distance, graph distance (most-probable path, hubs penalised) and bridge strength. The bridge path ends at the cluster's *entry article*; hubs such as *Europe* or *India*, which are linked from many different clusters, are never used as endpoints.
 - **v1, heuristic and explainable:** a "Goldilocks band" around a target distance set by the Surprise slider, multiplied by rabbit-holeness and bridge strength, then **MMR** re-ranking so the 5 picks are diverse.
 - **v2, learning-to-rank:** **LightGBM LambdaRank** trained on a proxy label, namely where readers *actually* wandered in the held-out future months (3-step random walk mass, excluding direct links). Train/valid/test splits are by seed community, so no community leaks across splits. All runs are tracked in **MLflow**.
 
@@ -79,13 +79,14 @@ The score is a weighted mean of z-scores (expected depth counts double), turned 
 Retrieve the best chunks from the cluster's central articles, suggest a gentle-to-deep order, and have the LLM pick steps **only from the given article ids**. Code validates every step, attaches the URLs and falls back to a template trail if fewer than 5 steps survive. Without an API key the app runs entirely on the template trail.
 
 ### 6. Evaluation (`make eval`)
-- **Systems:** random, popularity, nearest neighbour, heuristic v1 (with and without MMR), LTR v2, plus ablations.
+- **Labels from the future:** for each test query, where readers actually walked within 3 clicks of the seeds in the two *later* months (direct links excluded), graded 0–3. Test queries come from seed communities held out by a 60/20/20 split.
+- **Systems:** random, popularity, nearest neighbour, heuristic v1 (with and without MMR), LTR v2, plus ablations (no rh_score, no bridge) and a surprise sweep.
 - **Accuracy:** NDCG@5, Recall@10 and MRR against held-out future navigation.
-- **Beyond accuracy:** novelty, intra-list diversity, catalogue coverage and serendipity, all with 95% bootstrap confidence intervals.
+- **Beyond accuracy:** novelty, intra-list diversity, catalogue coverage and serendipity, all with 95% bootstrap confidence intervals, paired bootstrap tests, and every run logged to MLflow.
 - **RAG:** 100% link validity, enforced in tests; faithfulness via an LLM judge calibrated on 30 hand-checked trails.
 - **Human study:** 10–20 participants rate blind v1/v2 recommendations.
 
-Results will go in [docs/RESULTS.md](docs/RESULTS.md) once these phases are built.
+Results so far: [docs/RESULTS.md](docs/RESULTS.md).
 
 ## Early findings (DEV data, clickstream 2026-07)
 
@@ -119,6 +120,20 @@ Results will go in [docs/RESULTS.md](docs/RESULTS.md) once these phases are buil
 
 Readers who enter Greek myth, Bronze Age Greece or Byzantium keep clicking inside. Readers who look up a keyboard layout read one page and leave (onward ratio 0.17). One honest wart: *1998 FIFA World Cup* ranks #2, partly because "content richness" uses page byte size and results tables are large. No two features correlate above 0.79 ([heatmap](reports/figures/03_rh_feature_correlation.png)). Human-label validation: pending.
 
+**Recommender v1 vs baselines** ([reports/eval_2026-11-01.md](reports/eval_2026-11-01.md), 500 test queries):
+
+| System | NDCG@5 [95% CI] | Serendipity |
+|---|---|---|
+| Random | 0.37 [0.35, 0.38] | 0.27 |
+| Popularity | 0.32 [0.31, 0.34] | 0.28 |
+| Nearest neighbour | **0.84** [0.82, 0.85] | 0.00 |
+| Heuristic v1 + MMR | 0.43 [0.41, 0.45] | **0.55** |
+| v1 + MMR, surprise 0 / 1 | 0.58 / 0.28 | 0.42 / 0.38 |
+
+Nearest neighbour wins accuracy, as it should: the label is "where readers went next", and readers mostly go next door. v1 deliberately skips next door. It still beats random and popularity (p < 0.01), finds by far the most *relevant-but-not-obvious* clusters, and the Surprise slider trades accuracy for distance smoothly. Ablations: the click-path **bridge strength** carries the most signal (−0.07 NDCG without it); rh_score adds a small but significant +0.01. Caveat: 500 queries from only 9 test communities means the CIs are too narrow on DEV. Full discussion is in [docs/RESULTS.md](docs/RESULTS.md).
+
+![Accuracy vs novelty and serendipity](reports/figures/eval_2026-11-01_accuracy_vs_novelty.png)
+
 More charts in [reports/figures/](reports/figures/) and the EDA notebook [notebooks/01_eda.py](notebooks/01_eda.py).
 
 ## Project status
@@ -130,8 +145,8 @@ More charts in [reports/figures/](reports/figures/) and the EDA notebook [notebo
 | 2 | Click graph and Leiden communities | ✅ done |
 | 3 | Embeddings, Postgres + pgvector, UMAP map | ✅ done |
 | 4 | Rabbit-holeness score and validation | ✅ done (human labels pending) |
-| 5 | Recommender v1 and evaluation harness | ⏳ next |
-| 6 | FastAPI service | planned |
+| 5 | Recommender v1 and evaluation harness | ✅ done |
+| 6 | FastAPI service | ⏳ next |
 | 7 | RAG trails | planned |
 | 8 | Next.js frontend with deck.gl map | planned |
 | 9 | FULL dataset and learning-to-rank v2 | planned |
@@ -175,7 +190,8 @@ make pipeline-dev         # build the DEV dataset (downloads ~1.5 GB of clickstr
 | `make lint` | ruff check, ruff format, pyright |
 | `make test` | pytest |
 | `uv --directory backend run rabbithole label-communities --n 100` | Rate communities 1–7, blind to the score, with a short description of each community and article (resumable) |
-| `make api`, `make web`, `make eval` | API, frontend, offline evaluation (coming in later phases) |
+| `make eval` | Offline evaluation of all systems → `reports/eval_<date>.md` + chart, logged to MLflow (http://localhost:5000) |
+| `make api`, `make web` | API and frontend (coming in Phases 6 and 8) |
 
 To open a notebook: `uv --directory backend run marimo edit ../notebooks/01_eda.py`
 
@@ -202,9 +218,9 @@ backend/src/rabbithole/
   graph/       click graph, Leiden communities, labels, pruned serving graph
   embed/       sentence embeddings, UMAP map, semantic search
   scoring/     rabbit-holeness features (absorbing Markov chain), score, labels
-  recommend/   candidates, rankers, baselines                (Phase 5, 9)
+  recommend/   catalog, seeds, candidates + bridge paths, v1 ranker, baselines (Phase 5; LTR in 9)
   rag/, llm/   trail retrieval, generation, validation       (Phase 7)
-  eval/        offline metrics + reports                     (Phase 5)
+  eval/        future-walk labels, metrics, bootstrap, report + MLflow (Phase 5)
   db/          Postgres models, idempotent loader (migrations in backend/alembic/)
   api/         FastAPI                                       (Phase 6)
   pipelines/   Dagster asset definitions

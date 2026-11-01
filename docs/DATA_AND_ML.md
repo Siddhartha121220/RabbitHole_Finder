@@ -81,8 +81,8 @@ Embed each interest string (use the model's query prefix if it has one), nearest
 ### 4.2 Candidates
 All eligible communities excluding C_S. Precompute per candidate:
 - `sem_dist` = 1 − cosine(user centroid, community centroid)
-- `graph_dist` = shortest weighted path from any seed to any member on the pruned graph (edge cost = −log p), capped at 6 hops; unreachable = cap + 1.
-- `bridge_strength` = max path probability (exp(−cost))
+- `graph_dist` = **hop count** of the cheapest path (multi-source Dijkstra on the pruned graph, edge cost = −log p + hub penalty) from any seed to any member, capped at 6 hops; longer or no path = cap + 1 = 7. *(Clarified in Phase 5: the cap is in hops, so the distance is reported in hops too.)*
+- `bridge_strength` = exp(−cost) of that cheapest path (0 if unreachable). The path ends at the community's **entry article** = cheapest-to-reach member that is not a hub. *Hub* = article linked from the most different communities (top 0.5%: Europe, India, London…), not raw in-degree, which would wrongly flag topic heads like *Titanic*.
 - `rh_score`, `popularity`
 
 For latency, first shortlist the 200 communities nearest by `sem_dist`, then compute graph features only for those.
@@ -96,7 +96,7 @@ Then **MMR re-ranking** (λ = 0.7) on community centroids so the 5 results are d
 Proxy label from **future** reader behaviour, with a temporal split to avoid leakage:
 - Feature month(s): M (graph, communities, features built only from M).
 - Label months: M+1, M+2.
-- For each sampled seed article s (stratified across communities), label each candidate community C by the probability mass of a 3-step random walk from s on the M+1..M+2 graph that lands in C, **excluding mass reached in 1 hop** (we reward discovery, not direct links). Discretize to graded relevance 0–3 by quantiles within each query.
+- For each sampled seed article s (stratified across communities), label each candidate community C by the probability mass of a 3-step random walk from s on the M+1..M+2 graph that lands in C, **excluding mass reached in 1 hop** (we reward discovery, not direct links). Discretize to graded relevance 0–3 by quantiles within each query. *(Phase 5 definition: walk starts uniformly on the seeds on the row-normalised label-month click graph; mass after steps 2 and 3 is summed; articles reached in 1 step and the seeds themselves are zeroed; community mass = sum over members; 0 = no mass, positive masses split into tertiles → 1/2/3. "Relevant" for binary metrics = grade ≥ 2.)*
 - Train LightGBM `lambdarank` on features from §4.2 + `rh_score` features + surprise-independent features. Group = query (seed set). Split queries by seed community into train/valid/test (no community leakage).
 - At serving time, combine: `final = LTR score` reweighted by the Goldilocks band for the user's surprise setting. Document clearly that LTR learns "what readers actually wander into", the band adds user control.
 - Track everything in MLflow; register the best model; the API loads the model file path from config.
@@ -122,7 +122,7 @@ Return the most probable path (≤ 4 hops) from a seed to the community's entry 
 ## 6. Offline evaluation (`make eval`)
 
 ### 6.1 Protocol
-- Queries: 500 seed sets built from held-out seed articles (1–3 articles each from the same or neighbouring communities).
+- Queries: 500 seed sets built from held-out seed articles (1–3 articles each from the same community; seed communities split 60/20/20 train/valid/test with a fixed seed, eval uses test). Seed sets whose future walk reaches no relevant community are skipped.
 - Ground truth: the future-navigation labels from §4.4 (test split only).
 
 ### 6.2 Systems compared

@@ -44,6 +44,17 @@ class Settings(BaseSettings):
         "discovery_share": 1.0,
     }
 
+    # Recommender (DATA_AND_ML §4) and offline evaluation (§6).
+    seeds_per_interest: int = 3
+    seed_min_similarity: float = 0.6
+    shortlist_size: int = 200
+    max_hops: int = 6
+    bridge_max_hops: int = 4
+    goldilocks_sigma: float = 0.12
+    mmr_lambda: float = 0.7
+    eval_queries: int = 500
+    eval_bootstrap: int = 1000
+
     @property
     def months(self) -> list[str]:
         """Clickstream months as a list; empty means "discover the latest"."""

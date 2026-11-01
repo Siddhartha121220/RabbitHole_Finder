@@ -85,6 +85,25 @@ def edges() -> dg.MaterializeResult[Any]:
 
 
 @dg.asset(group_name="ingest", deps=[article_ids])
+def label_edges(context: dg.AssetExecutionContext) -> dg.MaterializeResult[Any]:
+    """Link edges from the LATER months only (LTR / eval labels), on the feature-month ids.
+    Never used for features: that would leak the future into the model."""
+    settings = get_settings()
+    ids = pl.read_parquet(processed(settings, "article_ids"))
+    months = clickstream.resolve_months(settings)[1:]
+    if not months:
+        raise ValueError("labels need >= 2 clickstream months (DATA_AND_ML §4.4)")
+    context.log.info(f"label months: {months}")
+    df = pl.concat(
+        [
+            stats.edges(clickstream_path(settings, m), ids).with_columns(month=pl.lit(m))
+            for m in months
+        ]
+    )
+    return _write(df, processed(settings, "label_edges"))
+
+
+@dg.asset(group_name="ingest", deps=[article_ids])
 def article_text() -> dg.MaterializeResult[Any]:
     settings = get_settings()
     ids = pl.read_parquet(processed(settings, "article_ids"))
@@ -384,6 +403,7 @@ defs = dg.Definitions(
         article_ids,
         articles,
         edges,
+        label_edges,
         article_text,
         chunks,
         communities,

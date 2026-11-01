@@ -1,6 +1,7 @@
 """`rabbithole` command line. Usage: uv run rabbithole label-communities --n 100"""
 
 import argparse
+import logging
 import textwrap
 
 import polars as pl
@@ -65,6 +66,20 @@ def main() -> None:
         "label-communities", help=f"rate communities 1-{SCALE} for the score check"
     )
     lab.add_argument("--n", type=int, default=100, help="total communities to have rated")
+    sub.add_parser("eval", help="offline evaluation -> reports/eval_<date>.md + MLflow")
     args = parser.parse_args()
     if args.command == "label-communities":
         label_communities(args.n)
+    elif args.command == "eval":
+        run_eval()
+
+
+def run_eval() -> None:
+    from rabbithole.eval.runner import run
+    from rabbithole.ingest.clickstream import resolve_months
+
+    logging.basicConfig(level=logging.INFO)
+    settings = get_settings()
+    months = resolve_months(settings)
+    out = run(settings, processed(settings, "x").parent, months[0], months[1:])
+    print(f"wrote {out}")

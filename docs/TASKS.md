@@ -63,13 +63,13 @@ Rough timeline for a student working part-time with Claude Code: 5–7 weeks.
 **Acceptance:** extremes report looks right to the user; tests pass. Ask the user to do the 100 labels (≈ 20 minutes) — continue without blocking if they postpone.
 
 ## Phase 5 — Recommender v1 + evaluation harness
-- [ ] Seeds from free text (§4.1); candidate features (§4.2) with shortlist for latency.
-- [ ] Heuristic ranker with Goldilocks band + MMR (§4.3).
-- [ ] Bridge path explanation (§4.5).
-- [ ] Baselines: random, popularity, nearest neighbour.
-- [ ] Ground-truth labels from future months (§4.4 label definition) — requires ≥ 2 clickstream months; download them now.
-- [ ] Eval runner `make eval` with all metrics, bootstrap CIs, MLflow logging, report + charts (§6).
-- [ ] Unit tests for metrics (NDCG, novelty, diversity on toy inputs with known answers).
+- [x] Seeds from free text (§4.1); candidate features (§4.2) with shortlist for latency.
+- [x] Heuristic ranker with Goldilocks band + MMR (§4.3).
+- [x] Bridge path explanation (§4.5).
+- [x] Baselines: random, popularity, nearest neighbour.
+- [x] Ground-truth labels from future months (§4.4 label definition) — requires ≥ 2 clickstream months; download them now.
+- [x] Eval runner `make eval` with all metrics, bootstrap CIs, MLflow logging, report + charts (§6).
+- [x] Unit tests for metrics (NDCG, novelty, diversity on toy inputs with known answers).
 
 **Acceptance:** `make eval` produces `reports/eval_<date>.md`; heuristic v1 compared against baselines with CIs. It is fine if v1 does not win on every metric; write down why.
 

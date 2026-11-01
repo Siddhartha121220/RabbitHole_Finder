@@ -12,6 +12,7 @@ dependencies = [
     "dagster-webserver>=1.13.27",
     "datasets>=5.1.0",
     "duckdb>=2.0.0",
+    "mlflow-skinny>=3.17.2",
     "pgvector>=0.5.1",
     "polars>=2.1.0",
     "psycopg[binary]>=3.3.6",

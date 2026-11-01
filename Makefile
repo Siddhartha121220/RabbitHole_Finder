@@ -35,5 +35,8 @@ pipeline:
 dagster-ui:
 	mkdir -p .dagster && DAGSTER_HOME=$(CURDIR)/.dagster $(UV) run dagster dev -m rabbithole.pipelines.definitions
 
-api web eval:
+eval:
+	$(UV) run rabbithole eval
+
+api web:
 	@echo "$@: not implemented yet (see docs/TASKS.md)"
