@@ -34,6 +34,15 @@ class Settings(BaseSettings):
     leiden_resolution: float | None = None  # set to override the sweep's choice
     prune_top_k: int = 10
     hub_penalty: float = 0.1
+    # Rabbit-holeness weights (DATA_AND_ML §3.3): equal, expected depth counted double.
+    rh_weights: dict[str, float] = {
+        "expected_depth": 2.0,
+        "stickiness": 1.0,
+        "onward_ratio": 1.0,
+        "breadth": 1.0,
+        "content_richness": 1.0,
+        "discovery_share": 1.0,
+    }
 
     @property
     def months(self) -> list[str]:

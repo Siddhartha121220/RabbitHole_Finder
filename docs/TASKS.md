@@ -54,11 +54,11 @@ Rough timeline for a student working part-time with Claude Code: 5–7 weeks.
 **Acceptance:** semantic search for "mechanical keyboard", "Byzantine", "cricket" returns sensible articles in DEV; DB loaded via `make pipeline-dev`.
 
 ## Phase 4 — Rabbit-holeness score
-- [ ] Feature computation per community (§3.1); absorbing chain with sparse solver (§3.2) + hand-computed unit test.
-- [ ] Score + percentile + breakdown (§3.3); weights in config.
-- [ ] `reports/rh_extremes.md`; feature correlation heatmap.
-- [ ] Labeling CLI: `uv run rabbithole label-communities --n 100` (saves to `data/labels/rh_labels.csv`).
-- [ ] Notebook `03_rh_validation`: Spearman vs labels (when labels exist), ridge-learned weights comparison.
+- [x] Feature computation per community (§3.1); absorbing chain with sparse solver (§3.2) + hand-computed unit test.
+- [x] Score + percentile + breakdown (§3.3); weights in config.
+- [x] `reports/rh_extremes.md`; feature correlation heatmap.
+- [x] Labeling CLI: `uv run rabbithole label-communities --n 100` (saves to `data/labels/rh_labels.csv`).
+- [x] Notebook `03_rh_validation`: Spearman vs labels (when labels exist), ridge-learned weights comparison.
 
 **Acceptance:** extremes report looks right to the user; tests pass. Ask the user to do the 100 labels (≈ 20 minutes) — continue without blocking if they postpone.
 

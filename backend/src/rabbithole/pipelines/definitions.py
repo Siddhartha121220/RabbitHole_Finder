@@ -17,6 +17,9 @@ from rabbithole.graph import communities as comm
 from rabbithole.graph import pruned, report
 from rabbithole.ingest import clickstream, hf_text, stats, subset, text
 from rabbithole.ingest.dev_seeds import DEV_SEEDS
+from rabbithole.scoring import report as rh_report
+from rabbithole.scoring.features import community_features
+from rabbithole.scoring.score import breakdown, score
 
 
 def processed(settings: Settings, name: str) -> Path:
@@ -196,6 +199,25 @@ def map_coords() -> dg.MaterializeResult[Any]:
     )
 
 
+@dg.asset(group_name="scoring", deps=[articles, edges, communities, article_text])
+def rh_scores() -> dg.MaterializeResult[Any]:
+    """Rabbit-holeness features and Depth Meter score for every eligible community."""
+    settings = get_settings()
+    comms = pl.read_parquet(processed(settings, "communities"))
+    features = community_features(
+        pl.read_parquet(processed(settings, "articles")),
+        pl.read_parquet(processed(settings, "edges")),
+        pl.read_parquet(processed(settings, "article_communities")),
+        pl.read_parquet(processed(settings, "article_text")).select("article_id", "page_length"),
+    )
+    eligible = comms.filter("eligible").select("community_id", "label", "top_article_ids")
+    scored = score(features.join(eligible, on="community_id"), settings.rh_weights)
+    report_path(settings, "rh_extremes").write_text(
+        rh_report.extremes_report(scored, pl.read_parquet(processed(settings, "article_ids")))
+    )
+    return _write(scored.drop("label", "top_article_ids"), processed(settings, "rh_scores"))
+
+
 SEARCH_PROBES = [
     "mechanical keyboard",
     "Byzantine",
@@ -206,7 +228,7 @@ SEARCH_PROBES = [
 ]
 
 
-@dg.asset(group_name="serve", deps=[articles, map_coords, chunk_embeddings])
+@dg.asset(group_name="serve", deps=[articles, map_coords, chunk_embeddings, rh_scores])
 def postgres(context: dg.AssetExecutionContext) -> dg.MaterializeResult[Any]:
     """Migrate, then load communities, articles and chunks into Postgres (idempotent)."""
     settings = get_settings()
@@ -214,9 +236,17 @@ def postgres(context: dg.AssetExecutionContext) -> dg.MaterializeResult[Any]:
     def read(name: str) -> pl.DataFrame:
         return pl.read_parquet(processed(settings, name))
 
+    scores = read("rh_scores")
+    rh = scores.select(
+        "community_id",
+        "rh_score",
+        # Struct column: becomes a nested dict per row, stored as JSONB.
+        pl.Series("rh_features", [breakdown(r) for r in scores.iter_rows(named=True)]),
+    )
     comm_rows = (
         read("communities")
         .join(read("community_map"), on="community_id")
+        .join(rh, on="community_id", how="left")
         .select(
             pl.col("community_id").alias("id"),
             "label",
@@ -228,6 +258,8 @@ def postgres(context: dg.AssetExecutionContext) -> dg.MaterializeResult[Any]:
             "centroid",
             "umap_x",
             "umap_y",
+            "rh_score",
+            "rh_features",
         )
     )
     art_rows = (
@@ -356,6 +388,7 @@ defs = dg.Definitions(
         chunks,
         communities,
         edges_pruned,
+        rh_scores,
         article_embeddings,
         chunk_embeddings,
         map_coords,

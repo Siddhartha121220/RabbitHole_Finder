@@ -61,8 +61,8 @@ A rabbit hole is a topic where readers who enter **keep going and stay inside**.
 | `popularity` | log Σ views_in | Used for baselines/ranking, **not** in the score |
 
 ### 3.2 Expected depth (absorbing Markov chain)
-For community C with members 1..m, let Q be the m×m matrix of transition probabilities between members (from `p`), where the missing probability mass of each row is "leave C" (absorbing, includes stopping). Fundamental matrix N = (I − Q)⁻¹. Expected steps before absorption from start vector π (entry distribution into C, from inbound counts) is `π · N · 1`.
-- Use sparse matrices; for large m solve `(I − Q)ᵀ x = π` with a sparse solver rather than inverting.
+For community C with members 1..m, let Q be the m×m matrix of **per-visit** transition probabilities between members, `Q[i,j] = n(i→j) / (max(views_in_i, onward_clicks_i) + 1)`. The missing probability mass of each row is "leave C" (absorbing: clicking outside C *or stopping*). Note this is **not** the edge table's `p`: `p` is normalized over link clicks within the subset, so it ignores stopping and would make every reader click forever (see DECISIONS.md, Phase 4). The `+1` keeps each row sum strictly below 1, so I − Q is always invertible. Fundamental matrix N = (I − Q)⁻¹. Expected pages viewed inside C before absorption, from start vector π (entry distribution into C: each member's views minus visits arriving from other members), is `π · N · 1`.
+- Use sparse matrices; solve `(I − Q) y = 1` with a sparse solver rather than inverting, then take `π · y` (equivalent to solving `(I − Q)ᵀ x = π` and summing x).
 - Unit test on a 3-node hand-computed example.
 
 ### 3.3 Score

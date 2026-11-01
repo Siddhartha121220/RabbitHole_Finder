@@ -4,7 +4,7 @@
 
 Most recommenders optimise for *more of the same*. This one optimises for **your next obsession**: a topic close enough to feel approachable, far enough to feel like a discovery, and deep enough to keep you busy for weeks. Every signal comes from how millions of people actually move through Wikipedia ([Wikimedia clickstream](https://meta.wikimedia.org/wiki/Research:Wikipedia_clickstream)), not from guesses.
 
-**Status:** in active development. Phases 0–3 (tooling, data ingestion, EDA, click graph and communities, embeddings, vector database, map coordinates) are done; the rest is specified and being built phase by phase. See [Project status](#project-status).
+**Status:** in active development. Phases 0–4 (tooling, data ingestion, EDA, click graph and communities, embeddings, vector database, map coordinates, rabbit-holeness score) are done; the rest is specified and being built phase by phase. See [Project status](#project-status).
 
 ---
 
@@ -60,14 +60,14 @@ A rabbit hole is a topic where readers who enter **keep going and stay inside**.
 
 | Feature | Meaning |
 |---|---|
-| **Expected depth** | Expected number of clicks a reader makes inside the cluster before leaving, from an **absorbing Markov chain**: with `Q` the in-cluster transition matrix and `π` the entry distribution, depth = `π · (I − Q)⁻¹ · 1` (solved with a sparse solver) |
+| **Expected depth** | Expected number of pages a reader views inside the cluster before leaving, from an **absorbing Markov chain**: `Q[i,j]` = share of visits to *i* that continue to *j* (so stopping counts as leaving), `π` = where readers enter, depth = `π · (I − Q)⁻¹ · 1` (solved with a sparse solver, not by inverting) |
 | Stickiness | Share of clicks out of the cluster's articles that stay inside it |
 | Onward ratio | Do readers keep clicking at all? |
 | Breadth | Number of articles (log-scaled) |
 | Content richness | How much there is to read |
 | Discovery share | Found by wandering (internal links) rather than by searching |
 
-The score is a weighted mean of z-scores, turned into a 0–100 percentile (the Depth Meter). There is no ground truth for "rabbit-holeness", so it is validated three ways: feature correlations, a face-validity report of the top and bottom 20 clusters, and 100 hand-labelled clusters (Spearman ρ).
+The score is a weighted mean of z-scores (expected depth counts double), turned into a 0–100 percentile (the Depth Meter). There is no ground truth for "rabbit-holeness", so it is validated three ways: feature correlations, a face-validity report of the top and bottom 20 clusters, and hand-labelled clusters rated blind (Spearman ρ, plus cross-validated ridge-learned weights as a comparison).
 
 ### 4. Recommender
 - **Seeds:** your free-text interests are embedded (`BAAI/bge-small-en-v1.5`) and matched to articles with pgvector.
@@ -111,6 +111,14 @@ Results will go in [docs/RESULTS.md](docs/RESULTS.md) once these phases are buil
 
 **Semantic search** ([reports/seed_search_probes.md](reports/seed_search_probes.md)): *"mechanical keyboard"* → Keyboard technology, Model M keyboard, Ergonomic keyboard; *"Byzantine"* → Byzantine Empire, Medieval Greek; *"conspiracy theories"* → Shadow government, Illuminati.
 
+**Rabbit-holeness on DEV** ([reports/rh_extremes.md](reports/rh_extremes.md)):
+
+| Deepest | Shallowest |
+|---|---|
+| The Beatles · Minoan civilization · Epic Cycle · Greek mythology (Heracles) · Ancient Rome (Augustus) · Byzantine Empire · The Legend of Zelda · Trojan War | Secret society · Keyboard layout · Costa Concordia disaster · Goalkeeper (football) · CRISPR |
+
+Readers who enter Greek myth, Bronze Age Greece or Byzantium keep clicking inside. Readers who look up a keyboard layout read one page and leave (onward ratio 0.17). One honest wart: *1998 FIFA World Cup* ranks #2, partly because "content richness" uses page byte size and results tables are large. No two features correlate above 0.79 ([heatmap](reports/figures/03_rh_feature_correlation.png)). Human-label validation: pending.
+
 More charts in [reports/figures/](reports/figures/) and the EDA notebook [notebooks/01_eda.py](notebooks/01_eda.py).
 
 ## Project status
@@ -121,8 +129,8 @@ More charts in [reports/figures/](reports/figures/) and the EDA notebook [notebo
 | 1 | Clickstream ingestion, DEV subset, article text, chunks, data checks, EDA | ✅ done |
 | 2 | Click graph and Leiden communities | ✅ done |
 | 3 | Embeddings, Postgres + pgvector, UMAP map | ✅ done |
-| 4 | Rabbit-holeness score and validation | ⏳ next |
-| 5 | Recommender v1 and evaluation harness | planned |
+| 4 | Rabbit-holeness score and validation | ✅ done (human labels pending) |
+| 5 | Recommender v1 and evaluation harness | ⏳ next |
 | 6 | FastAPI service | planned |
 | 7 | RAG trails | planned |
 | 8 | Next.js frontend with deck.gl map | planned |
@@ -166,6 +174,7 @@ make pipeline-dev         # build the DEV dataset (downloads ~1.5 GB of clickstr
 | `make dagster-ui` | Open the Dagster UI to inspect assets and checks |
 | `make lint` | ruff check, ruff format, pyright |
 | `make test` | pytest |
+| `uv --directory backend run rabbithole label-communities --n 100` | Rate communities 1–5, blind to the score (resumable) |
 | `make api`, `make web`, `make eval` | API, frontend, offline evaluation (coming in later phases) |
 
 To open a notebook: `uv --directory backend run marimo edit ../notebooks/01_eda.py`
@@ -192,7 +201,7 @@ backend/src/rabbithole/
   ingest/      clickstream download + parse, subset, stats, article text, chunking
   graph/       click graph, Leiden communities, labels, pruned serving graph
   embed/       sentence embeddings, UMAP map, semantic search
-  scoring/     rabbit-holeness features + score              (Phase 4)
+  scoring/     rabbit-holeness features (absorbing Markov chain), score, labels
   recommend/   candidates, rankers, baselines                (Phase 5, 9)
   rag/, llm/   trail retrieval, generation, validation       (Phase 7)
   eval/        offline metrics + reports                     (Phase 5)

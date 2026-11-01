@@ -5,7 +5,7 @@ import random
 import polars as pl
 
 
-def _md_table(df: pl.DataFrame) -> str:
+def md_table(df: pl.DataFrame) -> str:
     cols = df.columns
     lines = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
     for row in df.iter_rows():
@@ -21,7 +21,7 @@ def sweep_report(metrics: pl.DataFrame, chosen: float, mode: str) -> str:
         "Coherence = mean intra-community cosine similarity of article embeddings "
         "(communities with >= 8 articles); coherence_lift = coherence minus the mean cosine "
         "of random article pairs. score = modularity x coherence_lift.\n\n"
-        f"{_md_table(metrics)}\n\n**Chosen resolution: {chosen:g}** "
+        f"{md_table(metrics)}\n\n**Chosen resolution: {chosen:g}** "
         "(finest resolution within 5% of the best score, median community size in 20-200).\n"
     )
 

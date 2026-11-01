@@ -1,0 +1,39 @@
+"""Human labels for validating the score: "would this be a rabbit hole?" rated 1-5."""
+
+import csv
+import random
+from pathlib import Path
+
+import polars as pl
+
+FIELDS = ["community_id", "label", "rating"]
+
+
+def read_labels(path: Path) -> pl.DataFrame:
+    if not path.exists():
+        return pl.DataFrame(
+            schema={"community_id": pl.Int64, "label": pl.String, "rating": pl.Int64}
+        )
+    return pl.read_csv(path, schema_overrides={"community_id": pl.Int64, "rating": pl.Int64})
+
+
+def to_label(communities: pl.DataFrame, path: Path, n: int, seed: int = 11) -> list[int]:
+    """Community ids still to label: a fixed random order of eligible communities, minus
+    those already in `path`, capped so the total labelled is at most `n`."""
+    ids = sorted(communities.filter("eligible")["community_id"].to_list())
+    random.Random(seed).shuffle(ids)
+    done = set(read_labels(path)["community_id"].to_list())
+    remaining = max(n - len(done), 0)
+    return [i for i in ids if i not in done][:remaining]
+
+
+def append_label(path: Path, community_id: int, label: str, rating: int) -> None:
+    if not 1 <= rating <= 5:
+        raise ValueError("rating must be 1-5")
+    new = not path.exists()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", newline="") as f:
+        writer = csv.writer(f)
+        if new:
+            writer.writerow(FIELDS)
+        writer.writerow([community_id, label, rating])
