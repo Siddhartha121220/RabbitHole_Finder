@@ -84,11 +84,11 @@ Rough timeline for a student working part-time with Claude Code: 5–7 weeks.
 **Acceptance:** all endpoints documented in `/docs`; `/recommend` p95 < 800 ms on DEV locally.
 
 ## Phase 7 — RAG trail
-- [ ] LLM provider interface; Anthropic provider with structured JSON output + Pydantic validation; template provider.
-- [ ] Retrieval + ordering + generation + validation + caching (§5).
-- [ ] `/rabbit-holes/{id}/trail` wired up.
-- [ ] Trail eval: link validity test, LLM-as-judge faithfulness script, 30-trail hand-check sheet (`reports/trail_check.csv`).
-- [ ] Cost guard: log tokens per trail; refuse to run batch judge > 200 trails without user confirmation.
+- [x] LLM provider interface; Anthropic provider with structured JSON output + Pydantic validation; template provider.
+- [x] Retrieval + ordering + generation + validation + caching (§5).
+- [x] `/rabbit-holes/{id}/trail` wired up.
+- [ ] Trail eval: link validity test, LLM-as-judge faithfulness script, 30-trail hand-check sheet (`reports/trail_check.csv`). *(Link-validity tests and `rabbithole judge-trails` are built and tested offline; the paid run and the hand-check are waiting on an API key and the user's go-ahead.)*
+- [x] Cost guard: log tokens per trail; refuse to run batch judge > 200 trails without user confirmation.
 
 **Acceptance:** trails work with and without `ANTHROPIC_API_KEY`; link validity 100% in tests; faithfulness numbers in RESULTS.md.
 

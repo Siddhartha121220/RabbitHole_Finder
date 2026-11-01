@@ -38,7 +38,8 @@ Graph and features come from **2026-07**. Labels come only from **2026-08 + 2026
 _TBD (Phase 4)._
 
 ## RAG trail evaluation
-_TBD (Phase 7)._
+- **Link validity: 100% by construction and in tests.** The LLM never sees URLs; invented ids, duplicates and cross-article chunk citations are dropped (`tests/test_api.py`).
+- **Faithfulness (LLM judge) and judge-vs-human agreement: pending.** Run `rabbithole judge-trails --n 50` (needs `ANTHROPIC_API_KEY`, ≈ $1), then fill `reports/trail_check.csv` and run `rabbithole judge-trails --agreement`.
 
 ## Human study
 _TBD (Phase 10)._

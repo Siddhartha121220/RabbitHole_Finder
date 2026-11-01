@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://rabbit:rabbit@localhost:5432/rabbithole"
     anthropic_api_key: SecretStr | None = None
     llm_model: str = "claude-haiku-5-5"
+    judge_model: str = "claude-opus-5-5"  # LLM-as-judge for trail faithfulness
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_dim: int = 384  # must match the model; checked when embedding
     # bge models expect this instruction on short queries (not on documents)

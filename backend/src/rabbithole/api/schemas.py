@@ -62,7 +62,9 @@ class RabbitHoleDetail(RabbitHoleSummary):
 
 
 class TrailIn(BaseModel):
-    seed_titles: list[str] = Field(default_factory=list, max_length=10)
+    interests: list[str] = Field(default_factory=list, max_length=5)
+    seed_titles: list[str] = Field(default_factory=list, max_length=10)  # left out of the trail
+    bridge_article_ids: list[int] = Field(default_factory=list, max_length=10)
 
 
 class TrailStep(ArticleRef):
@@ -71,7 +73,8 @@ class TrailStep(ArticleRef):
 
 class TrailOut(BaseModel):
     rabbit_hole_id: int
-    model: str
+    model: str  # "template" when no LLM is configured or the LLM output failed validation
+    intro: str
     steps: list[TrailStep]
 
 

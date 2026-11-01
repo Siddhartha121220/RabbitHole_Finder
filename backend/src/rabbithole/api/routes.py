@@ -2,6 +2,7 @@
 URLs come from Postgres."""
 
 import hashlib
+import logging
 import time
 from collections.abc import Iterable
 from enum import Enum
@@ -15,11 +16,13 @@ from rabbithole.api import schemas as s
 from rabbithole.api.services import Services
 from rabbithole.db.models import Article, Community, Feedback, RecommendationLog, Trail
 from rabbithole.embed.search import ArticleHit, search_articles
+from rabbithole.rag.trail import build_trail
 from rabbithole.recommend import ranker
 from rabbithole.recommend.candidates import bridge_path, candidates
 from rabbithole.recommend.seeds import seeds_from_text
 from rabbithole.scoring.labels import first_sentence
 
+log = logging.getLogger("rabbithole.api")
 router = APIRouter()
 HOLES: list[str | Enum] = ["rabbit holes"]
 
@@ -184,43 +187,61 @@ def rabbit_hole(community_id: int, svc: Svc) -> s.RabbitHoleDetail:
     )
 
 
-TEMPLATE_MODEL = "template"
-
-
 @router.post("/rabbit-holes/{community_id}/trail", response_model=s.TrailOut, tags=HOLES)
 def trail(community_id: int, body: s.TrailIn, request: Request, svc: Svc) -> s.TrailOut:
-    """Reading trail, gentle to deep. Phase 6 serves the template trail (most-read first,
-    each step explained by its own opening sentence); Phase 7 swaps in RAG + LLM."""
+    """Reading trail, gentle to deep: retrieval over the community's passages, an LLM picks
+    and explains 5-7 steps from the retrieved ids only (template trail without an API key or
+    when the output fails validation). Cached per (community, seeds, interests, model)."""
     client = request.client.host if request.client else "unknown"
     if not request.app.state.trail_limiter.allow(client):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "too many trail requests")
-    seed_key = _sha(body.seed_titles)
     with Session(svc.engine) as db:
         c = _community(db, community_id)
+        names = [t.strip().replace(" ", "_") for t in body.seed_titles]
+        seed_ids = set(db.scalars(select(Article.id).where(Article.title.in_(names))))
+        key = _sha([*map(str, sorted(seed_ids)), *(f"i:{i}" for i in body.interests)])
         cached = db.scalars(
             select(Trail.payload).where(
                 Trail.community_id == community_id,
-                Trail.seed_key == seed_key,
-                Trail.model == TEMPLATE_MODEL,
+                Trail.seed_key == key,
+                Trail.model == svc.llm.name,
             )
         ).first()
         if cached is not None:
             return s.TrailOut.model_validate(cached)
-        arts = _articles(db, c.top_article_ids)
-        seeds = {t.strip().lower().replace(" ", "_") for t in body.seed_titles}
-        ordered = sorted(
-            (a for a in arts.values() if a.title.lower() not in seeds), key=lambda a: -a.views
+        built = build_trail(
+            db,
+            c,
+            body.interests,
+            seed_ids,
+            body.bridge_article_ids,
+            svc.llm,
+            svc.encoder,
+            svc.settings,
         )
-        steps = [
-            s.TrailStep(**_ref(a).model_dump(), why=first_sentence(a.lead_text, max_chars=200))
-            for a in ordered[:7]
-        ]
-        out = s.TrailOut(rabbit_hole_id=community_id, model=TEMPLATE_MODEL, steps=steps)
+        out = s.TrailOut(
+            rabbit_hole_id=community_id,
+            model=built.model,
+            intro=built.intro,
+            steps=[s.TrailStep(**_ref(st.article).model_dump(), why=st.why) for st in built.steps],
+        )
+        log.info(
+            "trail",
+            extra={
+                "event": "trail",
+                "community_id": community_id,
+                "model": built.usage.model,
+                "input_tokens": built.usage.input_tokens,
+                "output_tokens": built.usage.output_tokens,
+                "fallback_reason": built.fallback_reason,
+            },
+        )
+        # Cache under the configured provider, so a fallback is not retried on every call.
         db.add(
             Trail(
                 community_id=community_id,
-                seed_key=seed_key,
-                model=TEMPLATE_MODEL,
+                seed_key=key,
+                model=svc.llm.name,
                 payload=out.model_dump(),
             )
         )

@@ -127,7 +127,7 @@ Rules: CORS restricted to the frontend origin; request validation via Pydantic; 
 class LLMProvider(Protocol):
     def generate_trail(self, request: TrailRequest, context: list[RetrievedChunk]) -> TrailDraft: ...
 ```
-- `AnthropicProvider` — uses the official `anthropic` SDK, model from `LLM_MODEL`, structured JSON output validated with Pydantic, temperature low, timeout + 1 retry.
+- `AnthropicProvider` — uses the official `anthropic` SDK, model from `LLM_MODEL`, structured JSON output validated with Pydantic, temperature low, timeout + 1 retry. *(Phase 7: current models reject non-default sampling parameters, so determinism comes from the JSON schema and `effort: low` instead of temperature. Refusals and invalid output return an empty draft, which falls back to the template.)*
 - `TemplateProvider` — no LLM; builds the trail from the ranked article list and the first sentence of each lead. Used when `ANTHROPIC_API_KEY` is empty and in all tests.
 
 ## 7. Frontend

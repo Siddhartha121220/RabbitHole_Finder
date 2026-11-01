@@ -4,7 +4,7 @@
 
 Most recommenders optimise for *more of the same*. This one optimises for **your next obsession**: a topic close enough to feel approachable, far enough to feel like a discovery, and deep enough to keep you busy for weeks. Every signal comes from how millions of people actually move through Wikipedia ([Wikimedia clickstream](https://meta.wikimedia.org/wiki/Research:Wikipedia_clickstream)), not from guesses.
 
-**Status:** in active development. Phases 0–6 (tooling, data ingestion, EDA, click graph and communities, embeddings, vector database, map coordinates, rabbit-holeness score, recommender v1, offline evaluation and the FastAPI service) are done; the rest is specified and being built phase by phase. See [Project status](#project-status).
+**Status:** in active development. Phases 0–7 (tooling, data ingestion, EDA, click graph and communities, embeddings, vector database, map coordinates, rabbit-holeness score, recommender v1, offline evaluation, the FastAPI service and grounded RAG trails) are done (the paid LLM faithfulness run is pending); the rest is specified and being built phase by phase. See [Project status](#project-status).
 
 ---
 
@@ -86,6 +86,14 @@ Retrieve the best chunks from the cluster's central articles, suggest a gentle-t
 - **RAG:** 100% link validity, enforced in tests; faithfulness via an LLM judge calibrated on 30 hand-checked trails.
 - **Human study:** 10–20 participants rate blind v1/v2 recommendations.
 
+**Trail pipeline as built:**
+1. **Retrieve:** the cluster's 10 most central and most-viewed articles, plus the bridge path; up to 12 passages by cosine similarity to your interests, at most 2 per article.
+2. **Order:** gentle → deep, by views and the share of visits that come from search.
+3. **Generate:** Claude (`LLM_MODEL`, default Haiku 5.5) returns schema-constrained JSON: article id + passage id + a one-line "why" per step.
+4. **Validate and cache:** code keeps only steps whose ids were retrieved, joins URLs from the article table, falls back to the template trail if fewer than 5 survive, and caches the result.
+
+Faithfulness is checked by a separate, stronger judge model plus a 30-trail human hand-check (`rabbithole judge-trails`).
+
 Results so far: [docs/RESULTS.md](docs/RESULTS.md).
 
 ## Early findings (DEV data, clickstream 2026-07)
@@ -144,7 +152,7 @@ More charts in [reports/figures/](reports/figures/) and the EDA notebook [notebo
 | `POST /seeds/search` | free text → matching articles (autocomplete) |
 | `POST /recommend` | 1–5 interests + surprise → rabbit holes with score breakdown, bridge path, top articles, "why" |
 | `GET /rabbit-holes/{id}` | detail: about, central article, top articles, map position |
-| `POST /rabbit-holes/{id}/trail` | reading trail (template now, RAG in Phase 7), cached, rate-limited |
+| `POST /rabbit-holes/{id}/trail` | grounded reading trail (Claude, or the template trail without a key), cached, rate-limited |
 | `GET /map` | every rabbit hole with map position, size and score |
 | `POST /feedback` | 👍 / 👎 / "obsessed" |
 
@@ -159,8 +167,8 @@ More charts in [reports/figures/](reports/figures/) and the EDA notebook [notebo
 | 4 | Rabbit-holeness score and validation | ✅ done (human labels pending) |
 | 5 | Recommender v1 and evaluation harness | ✅ done |
 | 6 | FastAPI service | ✅ done |
-| 7 | RAG trails | ⏳ next |
-| 8 | Next.js frontend with deck.gl map | planned |
+| 7 | RAG trails | ✅ built (LLM faithfulness run pending an API key) |
+| 8 | Next.js frontend with deck.gl map | ⏳ next |
 | 9 | FULL dataset and learning-to-rank v2 | planned |
 | 10 | Deploy, user study, write-up | planned |
 
@@ -204,6 +212,8 @@ make pipeline-dev         # build the DEV dataset (downloads ~1.5 GB of clickstr
 | `uv --directory backend run rabbithole label-communities --n 100` | Rate communities 1–7, blind to the score, with a short description of each community and article (resumable) |
 | `make eval` | Offline evaluation of all systems → `reports/eval_<date>.md` + chart, logged to MLflow (http://localhost:5000) |
 | `make api` | FastAPI on http://localhost:8000, interactive docs at `/docs` |
+| `uv --directory backend run rabbithole judge-trails --n 50` | Generate and LLM-judge 50 trails → `reports/trail_eval.md` + hand-check sheet (needs `ANTHROPIC_API_KEY`, costs ≈ $1; over 200 trails needs `--yes`) |
+| `uv --directory backend run rabbithole judge-trails --agreement` | Judge vs your hand-check verdicts (agreement, Cohen's kappa) |
 | `uv --directory backend run python ../scripts/latency.py` | p50/p95 of `/recommend` over 100 random queries (API must be running) → `reports/api_latency.md` |
 | `make web` | Frontend (coming in Phase 8) |
 
@@ -233,7 +243,7 @@ backend/src/rabbithole/
   embed/       sentence embeddings, UMAP map, semantic search
   scoring/     rabbit-holeness features (absorbing Markov chain), score, labels
   recommend/   catalog, seeds, candidates + bridge paths, v1 ranker, baselines (Phase 5; LTR in 9)
-  rag/, llm/   trail retrieval, generation, validation       (Phase 7)
+  rag/, llm/   trail retrieval + ordering + validation; Anthropic / template providers (Phase 7)
   eval/        future-walk labels, metrics, bootstrap, report + MLflow (Phase 5)
   db/          Postgres models, idempotent loader (migrations in backend/alembic/)
   api/         FastAPI app, routes, schemas, JSON logging, rate limit (Phase 6)

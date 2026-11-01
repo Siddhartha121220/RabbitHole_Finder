@@ -67,11 +67,22 @@ def main() -> None:
     )
     lab.add_argument("--n", type=int, default=100, help="total communities to have rated")
     sub.add_parser("eval", help="offline evaluation -> reports/eval_<date>.md + MLflow")
+    judge = sub.add_parser("judge-trails", help="LLM-judged trail faithfulness (costs money)")
+    judge.add_argument("--n", type=int, default=50, help="trails to generate and judge")
+    judge.add_argument("--yes", action="store_true", help="allow more than 200 trails")
+    judge.add_argument("--agreement", action="store_true", help="judge vs human hand-checks")
     args = parser.parse_args()
     if args.command == "label-communities":
         label_communities(args.n)
     elif args.command == "eval":
         run_eval()
+    elif args.command == "judge-trails":
+        from rabbithole.eval import trail_judge
+
+        if args.agreement:
+            print(trail_judge.agreement())
+        else:
+            print(f"wrote {trail_judge.run(get_settings(), args.n, args.yes)}")
 
 
 def run_eval() -> None:

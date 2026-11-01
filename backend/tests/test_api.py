@@ -19,6 +19,14 @@ from rabbithole.api.observability import RateLimiter
 from rabbithole.api.services import Services
 from rabbithole.config import get_settings
 from rabbithole.db import loader
+from rabbithole.llm.provider import (
+    DraftStep,
+    RetrievedChunk,
+    TemplateProvider,
+    TrailDraft,
+    TrailRequest,
+    Usage,
+)
 from rabbithole.recommend.catalog import from_frames
 
 DB_NAME = "rabbithole_api_test"  # read by the `engine` fixture in conftest
@@ -79,6 +87,60 @@ def load_fixture_data(engine: Engine) -> None:
     chunks = pl.DataFrame(
         {"id": [0], "article_id": [0], "ord": [0], "text": ["x"], "embedding": [unit(0).tolist()]}
     )
+    # Community 3 ("Deep", not eligible so it stays off the map): 7 articles with a passage
+    # each, enough for an LLM trail of 5-7 steps.
+    deep = list(range(N, N + 7))
+    comms = pl.concat(
+        [
+            comms,
+            pl.DataFrame(
+                {
+                    "id": [3],
+                    "label": ["Deep"],
+                    "size": [7],
+                    "eligible": [False],
+                    "keywords": [["deep"]],
+                    "central_article_id": [deep[0]],
+                    "top_article_ids": [deep],
+                    "centroid": [unit(10).tolist()],
+                    "umap_x": [0.3],
+                    "umap_y": [0.3],
+                    "rh_score": [None],
+                    "rh_features": [None],
+                }
+            ),
+        ],
+        how="diagonal_relaxed",
+    )
+    arts = pl.concat(
+        [
+            arts.with_columns(search_share=pl.lit(0.3)),
+            pl.DataFrame(
+                {
+                    "id": deep,
+                    "title": [f"D{i}" for i in deep],
+                    "url": [loader.wiki_url(f"D{i}") for i in deep],
+                    "views": [1000 - 10 * i for i in deep],
+                    "search_share": [0.5] * 7,
+                    "community_id": [3] * 7,
+                    "lead_text": [f"D{i} is deep." for i in deep],
+                    "embedding": [unit(i).tolist() for i in deep],
+                    "umap_x": [0.3] * 7,
+                    "umap_y": [0.3] * 7,
+                }
+            ),
+        ],
+        how="diagonal_relaxed",
+    )
+    chunks = pl.DataFrame(
+        {
+            "id": [0, *deep],
+            "article_id": [0, *deep],
+            "ord": [0] * 8,
+            "text": ["x", *(f"Passage about D{i}." for i in deep)],
+            "embedding": [unit(0).tolist(), *(unit(i).tolist() for i in deep)],
+        }
+    )
     with engine.begin() as conn:
         loader.load(conn, comms, arts, chunks, {"dataset_mode": "dev", "months": []})
 
@@ -93,7 +155,7 @@ def services(engine: Engine) -> Services:
         ),
         pl.DataFrame({"src_id": [0, 1, 2, 3, 4], "dst_id": [1, 2, 3, 4, 5], "cost": [0.5] * 5}),
     )
-    return Services(get_settings(), engine, catalog, FakeEncoder())
+    return Services(get_settings(), engine, catalog, FakeEncoder(), TemplateProvider())
 
 
 @pytest.fixture(scope="module")
@@ -164,12 +226,14 @@ def test_rabbit_hole_detail_and_404(client: TestClient) -> None:
 
 
 def test_trail_is_cached_and_rate_limited(client: TestClient, engine: Engine) -> None:
+    client.app.state.trail_limiter = RateLimiter(per_minute=2)  # type: ignore[attr-defined]
     first = client.post("/rabbit-holes/2/trail", json={"seed_titles": ["A5"]})
     assert first.status_code == 200
     assert [s["title"] for s in first.json()["steps"]] == ["A4"]  # seed A5 left out
     second = client.post("/rabbit-holes/2/trail", json={"seed_titles": ["A5"]})
     assert second.json() == first.json()
     assert count(engine, "trails") == 1
+    assert first.json()["model"] == "template"
     assert client.post("/rabbit-holes/2/trail", json={}).status_code == 429  # limit is 2/min
 
 
@@ -210,3 +274,68 @@ def test_rate_limiter_refills() -> None:
     assert limiter.allow("other")
     now[0] = 30.0  # half a minute refills one token
     assert limiter.allow("ip") and not limiter.allow("ip")
+
+
+class FakeLLM:
+    """Returns invented ids, duplicates and mismatched chunks alongside valid steps."""
+
+    name = "fake-llm"
+
+    def __init__(self, n_valid: int) -> None:
+        self.n_valid = n_valid
+        self.seen: list[RetrievedChunk] = []
+
+    def generate_trail(
+        self, request: TrailRequest, context: list[RetrievedChunk]
+    ) -> tuple[TrailDraft, Usage]:
+        self.seen = context
+        valid = [
+            DraftStep(article_id=c.article_id, chunk_id=c.chunk_id, why=f"Read {c.title}.")
+            for c in context[: self.n_valid]
+        ]
+        junk = [
+            DraftStep(article_id=999_999, chunk_id=None, why="Invented article."),
+            DraftStep(article_id=context[0].article_id, chunk_id=None, why="Duplicate."),
+            DraftStep(article_id=context[1].article_id, chunk_id=context[2].chunk_id, why="x"),
+            DraftStep(article_id=0, chunk_id=0, why="Article from another community."),
+        ]
+        draft = TrailDraft(intro="Into the deep.", steps=[*junk[:1], *valid, *junk[1:]])
+        return draft, Usage(self.name, input_tokens=100, output_tokens=50)
+
+
+def trail_with(client: TestClient, llm: FakeLLM, **body: Any) -> dict[str, Any]:
+    app: Any = client.app
+    app.state.trail_limiter = RateLimiter(per_minute=100)
+    old = app.state.services.llm
+    app.state.services.llm = llm
+    try:
+        r = client.post("/rabbit-holes/3/trail", json=body)
+        assert r.status_code == 200
+        return r.json()
+    finally:
+        app.state.services.llm = old
+
+
+def test_llm_trail_keeps_only_retrieved_ids_and_our_urls(client: TestClient) -> None:
+    llm = FakeLLM(n_valid=6)
+    out = trail_with(client, llm, interests=["d7"], seed_titles=["D6"])
+    assert out["model"] == "fake-llm" and out["intro"] == "Into the deep."
+    ids = [s["id"] for s in out["steps"]]
+    assert len(ids) == 6 and len(set(ids)) == 6
+    assert 6 not in ids and {c.article_id for c in llm.seen} <= set(range(7, 13))  # seed left out
+    for st in out["steps"]:  # link validity: every URL is the article table's URL
+        assert st["url"] == loader.wiki_url(st["title"].replace(" ", "_"))
+    assert all(st["why"].startswith("Read D") for st in out["steps"])
+
+
+def test_too_few_valid_llm_steps_fall_back_to_template(client: TestClient) -> None:
+    out = trail_with(client, FakeLLM(n_valid=3), interests=["other"])
+    assert out["model"] == "template"
+    assert [s["title"] for s in out["steps"]][:2] == ["D6", "D7"]  # most-read first
+    assert all(s["url"].startswith("https://en.wikipedia.org/wiki/D") for s in out["steps"])
+
+
+def test_template_trail_lists_members_only(client: TestClient) -> None:
+    out = trail_with(client, FakeLLM(n_valid=0), bridge_article_ids=[0, 1])
+    assert out["model"] == "template"
+    assert {s["title"] for s in out["steps"]} <= {f"D{i}" for i in range(6, 13)}

@@ -8,6 +8,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.20.1",
+    "anthropic>=2.3.0",
     "dagster>=1.13.27",
     "dagster-webserver>=1.13.27",
     "datasets>=5.1.0",

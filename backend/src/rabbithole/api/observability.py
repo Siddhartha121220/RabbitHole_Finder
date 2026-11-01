@@ -12,7 +12,19 @@ from fastapi import Request, Response
 log = logging.getLogger("rabbithole.api")
 
 # Fields a log call may attach via `extra=` that should appear in the JSON line.
-EXTRA_FIELDS = ("request_id", "method", "path", "status", "latency_ms", "event")
+EXTRA_FIELDS = (
+    "request_id",
+    "method",
+    "path",
+    "status",
+    "latency_ms",
+    "event",
+    "model",
+    "input_tokens",
+    "output_tokens",
+    "fallback_reason",
+    "community_id",
+)
 
 
 class JsonFormatter(logging.Formatter):

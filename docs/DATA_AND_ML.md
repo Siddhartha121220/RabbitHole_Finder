@@ -109,10 +109,10 @@ Return the most probable path (≤ 4 hops) from a seed to the community's entry 
 ## 5. RAG trail
 
 1. **Retrieve:** candidate articles = top 30 articles of the community by (centrality, views), plus bridge-path articles. Query = user interests + community label. Retrieve top 12 chunks from `chunks` restricted to those articles (pgvector cosine), max 2 chunks per article.
-2. **Order:** gentle → deep using a "gentleness" heuristic: higher views and higher search_entry_share = gentler; more central-but-less-viewed = deeper. Provide this order to the LLM as a suggestion.
+2. **Order:** gentle → deep using a "gentleness" heuristic: higher views and higher search_entry_share = gentler; more central-but-less-viewed = deeper. Provide this order to the LLM as a suggestion. *(Phase 7: gentleness = z(log views) + z(search share) within the candidates; `articles.search_share` added in migration 0003. Candidates = the 10 most central members, then the most-viewed members up to 30, then bridge-path articles; the reader's seeds are excluded. The template trail uses community members only.)*
 3. **Generate:** the LLM returns JSON `{steps: [{article_id, why}], intro}` with 5–7 steps. The prompt includes chunk ids and article ids only; the LLM must choose from them. Instruct it to base each `why` on the given chunks only.
-4. **Validate:** reject/repair any step whose `article_id` is not in the retrieved set; URLs are attached by our code from the articles table. If < 5 valid steps, fall back to the template trail.
-5. **Cache** by `(community_id, sorted seed ids, model)`.
+4. **Validate:** reject/repair any step whose `article_id` is not in the retrieved set; URLs are attached by our code from the articles table. If < 5 valid steps, fall back to the template trail. *(Phase 7: each step also names the `chunk_id` its `why` is based on; a step is dropped if that chunk belongs to a different article, and duplicates are dropped. The judge checks each `why` against exactly that chunk.)*
+5. **Cache** by `(community_id, sorted seed ids, model)`. *(Phase 7: the interests are part of the key too, since they change retrieval.)*
 
 ### RAG evaluation
 - Link validity: must be 100% (assert in tests).

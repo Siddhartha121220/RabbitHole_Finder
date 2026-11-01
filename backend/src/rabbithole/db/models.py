@@ -52,6 +52,7 @@ class Article(Base):
     views: Mapped[int] = mapped_column(Integer)
     community_id: Mapped[int] = mapped_column(ForeignKey("communities.id"), index=True)
     lead_text: Mapped[str | None] = mapped_column(Text)
+    search_share: Mapped[float | None] = mapped_column(REAL)  # visits from search / all visits
     embedding: Mapped[Any] = mapped_column(Vector(DIM))
     umap_x: Mapped[float] = mapped_column(Float)
     umap_y: Mapped[float] = mapped_column(Float)

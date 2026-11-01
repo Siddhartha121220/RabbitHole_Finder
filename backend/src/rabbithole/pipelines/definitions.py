@@ -283,7 +283,12 @@ def postgres(context: dg.AssetExecutionContext) -> dg.MaterializeResult[Any]:
     )
     art_rows = (
         read("articles")
-        .select("article_id", "title", pl.col("views_in").alias("views"))
+        .select(
+            "article_id",
+            "title",
+            pl.col("views_in").alias("views"),
+            pl.col("search_entry_share").alias("search_share"),
+        )
         .join(read("article_text").select("article_id", "lead_text"), on="article_id")
         .join(read("article_communities"), on="article_id")
         .join(read("article_map"), on="article_id")
@@ -293,6 +298,7 @@ def postgres(context: dg.AssetExecutionContext) -> dg.MaterializeResult[Any]:
             "title",
             pl.col("title").map_elements(loader.wiki_url, return_dtype=pl.String).alias("url"),
             "views",
+            "search_share",
             "community_id",
             "lead_text",
             "embedding",
