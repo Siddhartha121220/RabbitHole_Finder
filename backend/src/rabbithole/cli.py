@@ -67,6 +67,7 @@ def main() -> None:
         "label-communities", help=f"rate communities 1-{SCALE} for the score check"
     )
     lab.add_argument("--n", type=int, default=100, help="total communities to have rated")
+    sub.add_parser("train-ltr", help="train the LightGBM ranker (v2) on future-navigation labels")
     sub.add_parser("eval", help="offline evaluation -> reports/eval_<date>.md + MLflow")
     judge = sub.add_parser("judge-trails", help="LLM-judged trail faithfulness (costs money)")
     judge.add_argument("--n", type=int, default=50, help="trails to generate and judge")
@@ -79,6 +80,12 @@ def main() -> None:
     args = parser.parse_args()
     if args.command == "label-communities":
         label_communities(args.n)
+    elif args.command == "train-ltr":
+        from rabbithole.recommend import ltr
+
+        logging.basicConfig(level=logging.INFO)
+        cfg = get_settings()
+        print(ltr.train_and_save(cfg, processed(cfg, "x").parent))
     elif args.command == "eval":
         run_eval()
     elif args.command == "pack":

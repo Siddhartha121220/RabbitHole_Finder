@@ -50,6 +50,7 @@ class Settings(BaseSettings):
 
     # Recommender (DATA_AND_ML §4) and offline evaluation (§6).
     seeds_per_interest: int = 3
+    recommender: Literal["v1", "v2"] = "v1"  # v2 = LightGBM ranker (needs `train-ltr`)
     seed_min_similarity: float = 0.6
     shortlist_size: int = 200
     max_hops: int = 6

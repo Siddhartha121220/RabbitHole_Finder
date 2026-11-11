@@ -34,6 +34,9 @@ Graph and features come from **2026-07**. Labels come only from **2026-08 + 2026
 - 500 queries come from only **9 test communities**, so queries are clustered. The bootstrap CIs resample queries and are therefore **too narrow**; differences that are small relative to CI width should not be trusted. FULL data (hundreds of communities) fixes this.
 - DEV is a 5,000-article BFS around 25 unrelated seeds, so some "bridges" are odd (keyboards → Nintendo Switch → Titanic). FULL density should give more natural paths.
 
+### LTR v2 — DEV smoke run, 2026-11-11 ([full report](../reports/eval_2026-11-11.md))
+LightGBM lambdarank reaches NDCG@5 0.95 [0.94, 0.96] against 0.43 for heuristic v1 + MMR (paired diff +0.20 with the band and MMR). On 44 communities this is near saturation, so it only shows the pipeline works; the accuracy-for-novelty trade (novelty 5.6 vs 6.0, serendipity 0.22 vs 0.55 without the band) is the pattern to check on FULL. The real table replaces this once FULL is built.
+
 ## Rabbit-holeness validation
 _TBD (Phase 4)._
 

@@ -111,3 +111,23 @@ def test_relevance_skips_seed_community(catalog: Catalog) -> None:
     rel = lab.relevance(catalog, lab.transition_matrix(e, 6), [0])
     assert set(rel) == {1, 2}
     assert rel[1] > 0 and rel[2] == 0  # node 4 is 4 steps away: beyond the walk
+
+
+def test_ltr_features_match_names() -> None:
+    import numpy as np
+
+    from rabbithole.recommend import ltr
+    from rabbithole.recommend.candidates import Candidates
+
+    n = 4
+    c = Candidates(
+        np.arange(n), np.linspace(0.1, 0.9, n), np.arange(n), np.ones(n), np.arange(n), np.zeros(1)
+    )
+
+    class Cat:
+        rh_score = np.arange(n, dtype=float)
+        views = np.arange(1, n + 1, dtype=float)
+
+    x = ltr.features(Cat(), c, 2)  # type: ignore[arg-type]
+    assert x.shape == (n, len(ltr.FEATURES))
+    assert (x[:, ltr.FEATURES.index("n_seeds")] == 2).all()

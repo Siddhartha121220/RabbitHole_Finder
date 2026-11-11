@@ -15,7 +15,7 @@ import polars as pl
 from rabbithole.config import REPO_ROOT, Settings
 from rabbithole.eval import labels as lab
 from rabbithole.eval import metrics as m
-from rabbithole.recommend import ranker
+from rabbithole.recommend import ltr, ranker
 from rabbithole.recommend.candidates import Candidates, candidates
 from rabbithole.recommend.catalog import Catalog, load
 
@@ -42,7 +42,7 @@ def systems(catalog: Catalog, settings: Settings) -> dict[str, System]:
     def v1(**kw: object) -> System:
         return lambda c: ranker.heuristic(catalog, c, K_LIST, sigma=sigma, **kw)  # type: ignore[arg-type]
 
-    return {
+    systems_: dict[str, System] = {
         "Random": lambda c: ranker.random_ranker(c, K_LIST, rng),
         "Popularity": lambda c: ranker.popularity(catalog, c, K_LIST),
         "Nearest neighbour": lambda c: ranker.nearest(c, K_LIST),
@@ -53,6 +53,16 @@ def systems(catalog: Catalog, settings: Settings) -> dict[str, System]:
         "v1 + MMR, surprise 0": v1(lam=lam, surprise=0.0),
         "v1 + MMR, surprise 1": v1(lam=lam, surprise=1.0),
     }
+    if ltr.model_path(settings).exists():
+        model = ltr.load_model(settings)
+
+        def v2(**kw: object) -> System:
+            return lambda c: ltr.rank(model, catalog, c, c.n_seeds, K_LIST, sigma=sigma, **kw)  # type: ignore[arg-type]
+
+        systems_["LTR v2"] = v2(lam=None, band=False)
+        systems_["LTR v2 + band + MMR"] = v2(lam=lam)
+        systems_["LTR v2 + MMR, no band"] = v2(lam=lam, band=False)
+    return systems_
 
 
 def evaluate(catalog: Catalog, queries: list[lab.Query], settings: Settings) -> list[SystemResult]:
@@ -123,7 +133,7 @@ def chart(summary: dict[str, dict[str, tuple[float, float, float]]], path: Path)
     for ax, (metric, xlabel) in zip(axes, panels, strict=True):
         points: list[tuple[float, float, str]] = []
         for name, s in summary.items():
-            v1 = "v1" in name
+            v1 = "v1" in name or "LTR" in name
             color, marker = ("#2a78d6", "o") if v1 else ("#52514e", "s")
             (x, xl, xh), (y, yl, yh) = s[metric], s["ndcg@5"]
             ax.errorbar(
@@ -138,7 +148,7 @@ def chart(summary: dict[str, dict[str, tuple[float, float, float]]], path: Path)
                 capsize=3,
                 mec="#fcfcfb",
                 mew=1.5,
-                label=("Heuristic v1 variants" if v1 else "Baselines")
+                label=("Heuristic v1 / LTR v2 variants" if v1 else "Baselines")
                 if name in ("Random", "Heuristic v1")
                 else None,
             )
@@ -215,7 +225,12 @@ def report(
         ("Heuristic v1 + MMR", "Heuristic v1"),
         ("Heuristic v1 + MMR", "v1 + MMR, no rh_score"),
         ("Heuristic v1 + MMR", "v1 + MMR, no bridge"),
+        ("LTR v2", "Heuristic v1"),
+        ("LTR v2 + band + MMR", "Heuristic v1 + MMR"),
+        ("LTR v2 + band + MMR", "Nearest neighbour"),
     ]:
+        if a not in by or b not in by:
+            continue
         d, lo, hi, p = m.paired_bootstrap(by[a].per_query["ndcg@5"], by[b].per_query["ndcg@5"])
         lines.append(f"| {a} vs {b} | {d:+.3f} [{lo:+.3f}, {hi:+.3f}] | {p:.3f} |")
     lines += ["", f"![accuracy vs novelty]({figure})", ""]

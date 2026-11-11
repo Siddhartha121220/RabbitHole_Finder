@@ -182,7 +182,7 @@ More charts in [reports/figures/](reports/figures/) and the EDA notebook [notebo
 | 6 | FastAPI service | ✅ done |
 | 7 | RAG trails | ✅ built (LLM faithfulness run pending an API key) |
 | 8 | Next.js frontend with deck.gl map | ✅ done |
-| 9 | FULL dataset and learning-to-rank v2 | ⏳ next |
+| 9 | FULL dataset and learning-to-rank v2 | ⏳ LTR v2 built and working on DEV (`rabbithole train-ltr`, `RECOMMENDER=v2`); FULL build on Kaggle in progress |
 | 10 | Deploy, user study, write-up | planned |
 
 Detailed checklist: [docs/TASKS.md](docs/TASKS.md). Every design choice, including what was rejected and why: [docs/DECISIONS.md](docs/DECISIONS.md).

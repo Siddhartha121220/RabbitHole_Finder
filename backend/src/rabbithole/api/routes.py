@@ -17,7 +17,7 @@ from rabbithole.api.services import Services
 from rabbithole.db.models import Article, Community, Feedback, RecommendationLog, Trail
 from rabbithole.embed.search import ArticleHit, search_articles
 from rabbithole.rag.trail import build_trail
-from rabbithole.recommend import ranker
+from rabbithole.recommend import ltr, ranker
 from rabbithole.recommend.candidates import bridge_path, candidates
 from rabbithole.recommend.seeds import seeds_from_text
 from rabbithole.scoring.labels import first_sentence
@@ -125,7 +125,7 @@ def seed_search(body: s.SeedSearchIn, svc: Svc) -> list[s.ArticleHitOut]:
 
 @router.post("/recommend", response_model=s.RecommendOut, tags=["recommend"])
 def recommend(body: s.RecommendIn, svc: Svc) -> s.RecommendOut:
-    """Heuristic v1: Goldilocks band x rabbit-holeness x bridge strength, MMR-diversified."""
+    """v1 (default): Goldilocks band x rabbit-holeness x bridge strength, MMR-diversified."""
     start = time.perf_counter()
     settings, catalog = svc.settings, svc.catalog
     with Session(svc.engine) as db:
@@ -138,14 +138,26 @@ def recommend(body: s.RecommendIn, svc: Svc) -> s.RecommendOut:
     cands = candidates(
         catalog, [h.article_id for h in seeds], settings.shortlist_size, settings.max_hops
     )
-    picks = ranker.heuristic(
-        catalog,
-        cands,
-        body.k,
-        surprise=body.surprise,
-        sigma=settings.goldilocks_sigma,
-        lam=settings.mmr_lambda,
-    )
+    if svc.ltr_model is not None:
+        picks = ltr.rank(
+            svc.ltr_model,
+            catalog,
+            cands,
+            len(seeds),
+            body.k,
+            surprise=body.surprise,
+            sigma=settings.goldilocks_sigma,
+            lam=settings.mmr_lambda,
+        )
+    else:
+        picks = ranker.heuristic(
+            catalog,
+            cands,
+            body.k,
+            surprise=body.surprise,
+            sigma=settings.goldilocks_sigma,
+            lam=settings.mmr_lambda,
+        )
     ids = [int(catalog.community_ids[cands.idx[j]]) for j in picks]
     paths = {j: bridge_path(cands, j, settings.bridge_max_hops) for j in picks}
 

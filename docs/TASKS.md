@@ -104,8 +104,8 @@ Rough timeline for a student working part-time with Claude Code: 5–7 weeks.
 ## Phase 9 — FULL data + LTR v2
 - [ ] Run FULL pipeline (ask user before big downloads; offer GPU path for embeddings).
 - [ ] Re-tune Leiden resolution for FULL; re-check extremes report.
-- [ ] LTR training with temporal + community split (§4.4); MLflow tracking; model registry.
-- [ ] Serve v2 behind a config flag; re-run `make eval` comparing all systems and ablations.
+- [x] LTR training with temporal + community split (§4.4); MLflow tracking (built on DEV; retrain on FULL).
+- [~] Serve v2 behind a config flag (`RECOMMENDER=v2`, done); re-run `make eval` comparing all systems and ablations.
 
 **Acceptance:** RESULTS.md has the full comparison table, the accuracy-vs-novelty chart, and an honest discussion.
 

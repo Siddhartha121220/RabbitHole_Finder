@@ -2,12 +2,14 @@
 
 from dataclasses import dataclass
 
+import lightgbm as lgb
 from sqlalchemy import Engine, text
 
 from rabbithole.config import Settings
 from rabbithole.embed.embeddings import Encoder, load_model
 from rabbithole.llm.provider import LLMProvider, make_provider
 from rabbithole.recommend import catalog as cat
+from rabbithole.recommend import ltr
 
 
 @dataclass
@@ -17,6 +19,7 @@ class Services:
     catalog: cat.Catalog
     encoder: Encoder
     llm: LLMProvider
+    ltr_model: lgb.Booster | None = None
 
     def database_ok(self) -> bool:
         try:
@@ -33,4 +36,5 @@ def load_services(settings: Settings, engine: Engine) -> Services:
     processed = settings.data_dir / "processed" / settings.dataset_mode
     encoder = load_model(settings.embedding_model)
     encoder.encode(["warm up"])
-    return Services(settings, engine, cat.load(processed), encoder, make_provider(settings))
+    model = ltr.load_model(settings) if settings.recommender == "v2" else None
+    return Services(settings, engine, cat.load(processed), encoder, make_provider(settings), model)

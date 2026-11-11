@@ -20,6 +20,7 @@ class Candidates:
     bridge_strength: np.ndarray  # exp(-cost) of the cheapest path, 0 if unreachable
     entry_article: np.ndarray  # member at the end of the cheapest path, -1 if unreachable
     predecessors: np.ndarray  # shortest-path tree over articles, for bridge_path()
+    n_seeds: int = 1
 
 
 def _hops(predecessors: np.ndarray, node: int) -> int:
@@ -59,7 +60,7 @@ def candidates(
             hops = _hops(pred, best)
             if hops <= max_hops:
                 graph_dist[j], strength[j], entry[j] = hops, np.exp(-dist[best]), best
-    return Candidates(idx, sem[idx], graph_dist, strength, entry, pred)
+    return Candidates(idx, sem[idx], graph_dist, strength, entry, pred, len(seeds))
 
 
 def bridge_path(cands: Candidates, j: int, max_hops: int = 4) -> list[int]:
