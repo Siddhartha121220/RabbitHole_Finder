@@ -79,7 +79,7 @@
      "recommend"
     ],
     "summary": "Recommend",
-    "description": "Heuristic v1: Goldilocks band x rabbit-holeness x bridge strength, MMR-diversified.",
+    "description": "v1 (default): Goldilocks band x rabbit-holeness x bridge strength, MMR-diversified.",
     "operationId": "recommend_recommend_post",
     "requestBody": {
      "content": {

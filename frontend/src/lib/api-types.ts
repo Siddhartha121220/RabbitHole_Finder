@@ -52,7 +52,7 @@ export interface paths {
         put?: never;
         /**
          * Recommend
-         * @description Heuristic v1: Goldilocks band x rabbit-holeness x bridge strength, MMR-diversified.
+         * @description v1 (default): Goldilocks band x rabbit-holeness x bridge strength, MMR-diversified.
          */
         post: operations["recommend_recommend_post"];
         delete?: never;
