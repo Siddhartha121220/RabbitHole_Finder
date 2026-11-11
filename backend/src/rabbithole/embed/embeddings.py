@@ -24,10 +24,36 @@ class Encoder(Protocol):
 
 
 @lru_cache
-def load_model(name: str) -> Encoder:
+def load_model(name: str, device: str = "cpu") -> Encoder:
     from sentence_transformers import SentenceTransformer
 
-    return cast(Encoder, SentenceTransformer(name, device="cpu"))
+    model = SentenceTransformer(name, device=device)
+    if device.startswith("cuda"):
+        model.half()  # fp16 on GPU: ~2x faster, cosine rankings unchanged in practice
+    return cast(Encoder, model)
+
+
+class MultiDevice:
+    """One encoder process per GPU (sentence-transformers' multi-process pool), started
+    once and reused for every shard. Close it when done."""
+
+    def __init__(self, name: str, devices: list[str]) -> None:
+        self.model: Any = load_model(name, devices[0])
+        self.pool: Any = self.model.start_multi_process_pool(devices)
+
+    def encode(self, sentences: list[str], **kwargs: Any) -> Any:
+        return self.model.encode(sentences, pool=self.pool, **kwargs)
+
+    def close(self) -> None:
+        self.model.stop_multi_process_pool(self.pool)
+
+
+def batch_encoder(settings: Settings) -> Encoder:
+    """Encoder for bulk embedding, from EMBED_DEVICES (CPU when empty)."""
+    devices = settings.embed_devices
+    if len(devices) > 1:
+        return MultiDevice(settings.embedding_model, devices)
+    return load_model(settings.embedding_model, devices[0] if devices else "cpu")
 
 
 def encode(model: Encoder, texts: list[str], batch_size: int = 64) -> np.ndarray:
@@ -69,6 +95,7 @@ def embed_table(
     shard_dir.mkdir(parents=True, exist_ok=True)
     step = settings.embed_shard_rows
     parts: list[pl.DataFrame] = []
+    encoder: Encoder | None = model
     for start in range(0, texts.height, step):
         part = texts.slice(start, step)
         # Shards are named by a hash of their contents, so a changed input never reuses
@@ -76,11 +103,8 @@ def embed_table(
         key = hashlib.sha1(part.select("id", "text").write_csv().encode()).hexdigest()[:16]
         shard = shard_dir / f"{key}.parquet"
         if not shard.exists():
-            vecs = encode(
-                model or load_model(settings.embedding_model),
-                part["text"].to_list(),
-                settings.embed_batch_size,
-            )
+            encoder = encoder or batch_encoder(settings)  # loaded only if a shard is missing
+            vecs = encode(encoder, part["text"].to_list(), settings.embed_batch_size)
             if vecs.shape[1] != settings.embedding_dim:
                 raise ValueError(
                     f"model gives {vecs.shape[1]}-d vectors, EMBEDDING_DIM is "
@@ -89,6 +113,8 @@ def embed_table(
             _with_vectors(part["id"], vecs).write_parquet(shard)
             log.info("%s: embedded %d / %d", name, min(start + step, texts.height), texts.height)
         parts.append(pl.read_parquet(shard))
+    if isinstance(encoder, MultiDevice):
+        encoder.close()
     if not parts:
         return _with_vectors(
             pl.Series("id", [], pl.UInt32), np.zeros((0, settings.embedding_dim), np.float32)

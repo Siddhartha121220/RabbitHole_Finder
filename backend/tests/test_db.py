@@ -3,13 +3,16 @@
 Uses a separate `rabbithole_test` database and skips if Postgres is not reachable.
 """
 
+from typing import cast
+
 import numpy as np
 import polars as pl
-from sqlalchemy import text
+from sqlalchemy import Table, text
 from sqlalchemy.engine import Engine
 
 from rabbithole.config import get_settings
 from rabbithole.db import loader
+from rabbithole.db.models import Article
 from rabbithole.embed.search import nearest_articles
 
 DIM = get_settings().embedding_dim
@@ -97,3 +100,12 @@ def test_nearest_articles_orders_by_cosine(engine: Engine) -> None:
         hits = nearest_articles(conn, q, k=3, min_similarity=0.05)
     assert [h.title for h in hits] == ["Cricket", "Sushi"]  # Chess is orthogonal: filtered out
     assert hits[0].url == "https://en.wikipedia.org/wiki/Cricket"
+
+
+def test_large_prune_path_uses_temp_table(engine: Engine) -> None:
+    info = {"dataset_mode": "dev", "months": []}
+    with engine.begin() as conn:
+        loader.load(conn, *frames(["Chess", "Cricket", "Sushi"]), info)
+    with engine.begin() as conn:
+        loader.prune(conn, cast(Table, Article.__table__), [0, 2], small=0)
+    assert counts(engine)[1] == 2

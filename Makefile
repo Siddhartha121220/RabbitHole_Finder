@@ -1,5 +1,5 @@
 UV := uv --directory backend
-.PHONY: setup up down lint test migrate pipeline-dev pipeline dagster-ui api web eval api-types
+.PHONY: load setup up down lint test migrate pipeline-dev pipeline dagster-ui api web eval api-types
 
 setup:
 	$(UV) sync
@@ -31,6 +31,11 @@ pipeline-dev:
 
 pipeline:
 	DATASET_MODE=full $(DAGSTER)
+
+# Load processed Parquet into Postgres only (e.g. after `rabbithole unpack` of a Kaggle build).
+load:
+	mkdir -p .dagster && DAGSTER_HOME=$(CURDIR)/.dagster $(UV) run dagster asset materialize \
+		-m rabbithole.pipelines.definitions --select postgres
 
 dagster-ui:
 	mkdir -p .dagster && DAGSTER_HOME=$(CURDIR)/.dagster $(UV) run dagster dev -m rabbithole.pipelines.definitions

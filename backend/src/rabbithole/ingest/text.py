@@ -7,6 +7,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from itertools import islice
 from pathlib import Path
 from typing import Any
 
@@ -137,27 +138,31 @@ def chunk_words(text: str, size: int = 300, overlap: int = 50) -> list[str]:
     return [" ".join(words[i : i + size]) for i in range(0, max(len(words) - overlap, 1), step)]
 
 
-def chunks(text_table: pl.DataFrame) -> pl.DataFrame:
-    """chunks table: chunk_id, article_id, ord, section, text. Text starts with its heading."""
+def chunks(text_table: pl.DataFrame, max_per_article: int | None = None) -> pl.DataFrame:
+    """chunks table: chunk_id, article_id, ord, section, text. Text starts with its heading.
+    At most `max_per_article` chunks per article (None = all)."""
     rows: list[dict[str, Any]] = []
     for article_id, title, body in text_table.select(
         "article_id", "title", "body_text"
     ).iter_rows():
         if not body:
             continue
-        ord_ = 0
-        for section, sec_text in split_sections(body):
-            for piece in chunk_words(sec_text):
-                heading = title.replace("_", " ") + ("" if section == "Lead" else f" — {section}")
-                rows.append(
-                    {
-                        "article_id": article_id,
-                        "ord": ord_,
-                        "section": section,
-                        "text": f"{heading}\n{piece}",
-                    }
-                )
-                ord_ += 1
+        pieces = (
+            (section, piece)
+            for section, sec_text in split_sections(body)
+            for piece in chunk_words(sec_text)
+        )
+        # Keep the first chunks (lead and early sections); a trail only needs the best few.
+        for ord_, (section, piece) in enumerate(islice(pieces, max_per_article)):
+            heading = title.replace("_", " ") + ("" if section == "Lead" else f" — {section}")
+            rows.append(
+                {
+                    "article_id": article_id,
+                    "ord": ord_,
+                    "section": section,
+                    "text": f"{heading}\n{piece}",
+                }
+            )
     return pl.DataFrame(
         rows,
         schema={"article_id": pl.UInt32, "ord": pl.Int32, "section": pl.String, "text": pl.String},

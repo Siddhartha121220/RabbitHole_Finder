@@ -116,3 +116,30 @@ def test_chunks_table() -> None:
     out = text.chunks(df)
     assert out.height == 1
     assert out.row(0, named=True)["text"] == "Chess\nChess is fun."
+
+
+def test_chunks_capped_per_article() -> None:
+    body = " ".join(f"w{i}" for i in range(3000))  # ~12 windows of 300 words
+    table = pl.DataFrame({"article_id": [0], "title": ["Long"], "body_text": [body]})
+    assert text.chunks(table).height > 8
+    capped = text.chunks(table, max_per_article=8)
+    assert capped.height == 8 and capped["ord"].to_list() == list(range(8))
+
+
+def test_pack_unpack_roundtrip(tmp_path: Path) -> None:
+    from rabbithole.config import get_settings
+    from rabbithole.pipelines import bundle
+
+    build = get_settings().model_copy(update={"data_dir": tmp_path / "a", "dataset_mode": "full"})
+    proc = build.data_dir / "processed" / "full"
+    proc.mkdir(parents=True)
+    pl.DataFrame(
+        {"article_id": [0, 1], "lead_text": ["a", "b"], "body_text": ["x", "y"]}
+    ).write_parquet(proc / "article_text.parquet")
+    pl.DataFrame({"id": [0, 1, 2]}).write_parquet(proc / "edges.parquet")
+    out = bundle.pack(build, tmp_path / "bundle")
+    serve = build.model_copy(update={"data_dir": tmp_path / "b"})
+    manifest = bundle.unpack(serve, out)
+    got = pl.read_parquet(serve.data_dir / "processed" / "full" / "article_text.parquet")
+    assert "body_text" not in got.columns and got.height == 2
+    assert manifest["files"]["edges.parquet"]["rows"] == 3  # type: ignore[index]

@@ -3,6 +3,7 @@
 import argparse
 import logging
 import textwrap
+from pathlib import Path
 
 import polars as pl
 
@@ -71,11 +72,24 @@ def main() -> None:
     judge.add_argument("--n", type=int, default=50, help="trails to generate and judge")
     judge.add_argument("--yes", action="store_true", help="allow more than 200 trails")
     judge.add_argument("--agreement", action="store_true", help="judge vs human hand-checks")
+    pack = sub.add_parser("pack", help="bundle processed data + reports to move a run")
+    pack.add_argument("--out", type=Path, required=True)
+    unpack = sub.add_parser("unpack", help="install a bundle made by `pack`")
+    unpack.add_argument("src", type=Path)
     args = parser.parse_args()
     if args.command == "label-communities":
         label_communities(args.n)
     elif args.command == "eval":
         run_eval()
+    elif args.command == "pack":
+        from rabbithole.pipelines import bundle
+
+        print(f"packed into {bundle.pack(get_settings(), args.out)}")
+    elif args.command == "unpack":
+        from rabbithole.pipelines import bundle
+
+        m = bundle.unpack(get_settings(), args.src)
+        print(f"installed {m['dataset_mode']} run: {len(m['files'])} tables")  # type: ignore[arg-type]
     elif args.command == "judge-trails":
         from rabbithole.eval import trail_judge
 

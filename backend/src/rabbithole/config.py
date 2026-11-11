@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     embedding_query_prefix: str = "Represent this sentence for searching relevant passages: "
     embed_batch_size: int = 64
     embed_shard_rows: int = 2048
+    # Empty = CPU. ["cuda:0"] = one GPU (fp16). ["cuda:0", "cuda:1"] = one process per GPU.
+    embed_devices: list[str] = []
+    max_chunks_per_article: int = 8  # caps FULL storage; retrieval only needs the best few
     dataset_mode: Literal["dev", "full"] = "dev"
     clickstream_months: str = ""
     mlflow_tracking_uri: str = "http://localhost:5000"

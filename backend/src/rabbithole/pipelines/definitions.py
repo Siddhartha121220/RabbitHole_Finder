@@ -1,5 +1,6 @@
 """Dagster assets for the offline pipeline. Each asset writes Parquet under data/."""
 
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -117,7 +118,9 @@ def article_text() -> dg.MaterializeResult[Any]:
 @dg.asset(group_name="ingest", deps=[article_text])
 def chunks() -> dg.MaterializeResult[Any]:
     settings = get_settings()
-    df = text.chunks(pl.read_parquet(processed(settings, "article_text")))
+    df = text.chunks(
+        pl.read_parquet(processed(settings, "article_text")), settings.max_chunks_per_article
+    )
     return _write(df, processed(settings, "chunks"))
 
 
@@ -136,7 +139,11 @@ def vectors(df: pl.DataFrame) -> np.ndarray:
 def article_embeddings() -> dg.MaterializeResult[Any]:
     """Title + lead per article. Resumable shards; uses data/import/ vectors if present."""
     settings = get_settings()
-    inputs = emb.article_inputs(pl.read_parquet(processed(settings, "article_text")))
+    inputs = emb.article_inputs(
+        pl.read_parquet(
+            processed(settings, "article_text"), columns=["article_id", "title", "lead_text"]
+        )
+    )
     emb.export_texts(inputs, "articles", settings)
     return _write(
         emb.embed_table(inputs, "articles", settings), processed(settings, "article_embeddings")
@@ -158,7 +165,10 @@ def communities(context: dg.AssetExecutionContext) -> dg.MaterializeResult[Any]:
     """Leiden resolution sweep, final partition, labels, and the sanity-check reports."""
     settings = get_settings()
     e = pl.read_parquet(processed(settings, "edges"))
-    texts = pl.read_parquet(processed(settings, "article_text")).sort("article_id")
+    # Only id, title and lead: FULL bodies are several GB and not needed here.
+    texts = pl.read_parquet(
+        processed(settings, "article_text"), columns=["article_id", "title", "lead_text"]
+    ).sort("article_id")
 
     g = comm.undirected_graph(e, texts.height)
     article_vecs = vectors(pl.read_parquet(processed(settings, "article_embeddings")))
@@ -227,7 +237,7 @@ def rh_scores() -> dg.MaterializeResult[Any]:
         pl.read_parquet(processed(settings, "articles")),
         pl.read_parquet(processed(settings, "edges")),
         pl.read_parquet(processed(settings, "article_communities")),
-        pl.read_parquet(processed(settings, "article_text")).select("article_id", "page_length"),
+        pl.read_parquet(processed(settings, "article_text"), columns=["article_id", "page_length"]),
     )
     eligible = comms.filter("eligible").select("community_id", "label", "top_article_ids")
     scored = score(features.join(eligible, on="community_id"), settings.rh_weights)
@@ -307,12 +317,23 @@ def postgres(context: dg.AssetExecutionContext) -> dg.MaterializeResult[Any]:
         )
         .sort("id")
     )
-    chunk_rows = (
-        read("chunks")
-        .join(read("chunk_embeddings").rename({"id": "chunk_id"}), on="chunk_id")
-        .select(pl.col("chunk_id").alias("id"), "article_id", "ord", "text", "embedding")
-        .sort("id")
-    )
+    n_chunks = pl.scan_parquet(processed(settings, "chunks")).select(pl.len()).collect().item()
+
+    def chunk_batches(size: int = 200_000) -> Iterator[pl.DataFrame]:
+        """Chunks + vectors in id ranges, so FULL's millions of rows never load at once."""
+        for lo in range(0, n_chunks, size):
+            ids = pl.col("chunk_id").is_between(lo, lo + size - 1)
+            vecs = pl.scan_parquet(processed(settings, "chunk_embeddings")).rename(
+                {"id": "chunk_id"}
+            )
+            yield (
+                pl.scan_parquet(processed(settings, "chunks"))
+                .filter(ids)
+                .join(vecs.filter(ids), on="chunk_id")
+                .select(pl.col("chunk_id").alias("id"), "article_id", "ord", "text", "embedding")
+                .sort("id")
+                .collect()
+            )
 
     loader.migrate()
     with get_engine().begin() as conn:
@@ -320,7 +341,7 @@ def postgres(context: dg.AssetExecutionContext) -> dg.MaterializeResult[Any]:
             conn,
             comm_rows,
             art_rows,
-            chunk_rows,
+            chunk_batches(),
             {"dataset_mode": settings.dataset_mode, "months": clickstream.resolve_months(settings)},
         )
 
@@ -338,7 +359,7 @@ def postgres(context: dg.AssetExecutionContext) -> dg.MaterializeResult[Any]:
         metadata={
             "articles": art_rows.height,
             "communities": comm_rows.height,
-            "chunks": chunk_rows.height,
+            "chunks": n_chunks,
         }
     )
 
@@ -366,7 +387,7 @@ def edges_counts_and_probabilities() -> dg.AssetCheckResult:
 
 @dg.asset_check(asset=article_text)
 def article_text_match_rate() -> dg.AssetCheckResult:
-    df = pl.read_parquet(processed(get_settings(), "article_text"))
+    df = pl.read_parquet(processed(get_settings(), "article_text"), columns=["lead_text"])
     matched = df.filter(pl.col("lead_text").str.len_chars() > 0).height
     rate = matched / max(df.height, 1)
     return _check(rate >= 0.9, match_rate=round(rate, 4), matched=matched, total=df.height)

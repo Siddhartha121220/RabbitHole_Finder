@@ -220,6 +220,8 @@ make web                  # terminal 2: open http://localhost:3000
 | Command | Does |
 |---|---|
 | `make pipeline-dev` / `make pipeline` | Run the data/ML pipeline on DEV / FULL data, ending with a load into Postgres |
+| `make load` | Load already-built Parquet (e.g. a Kaggle bundle) into Postgres; no rebuild |
+| `rabbithole pack --out DIR` / `rabbithole unpack DIR` | Bundle / install a finished pipeline run between machines |
 | `make migrate` | Apply database migrations (the pipeline also does this) |
 | `make dagster-ui` | Open the Dagster UI to inspect assets and checks |
 | `make lint` | ruff check, ruff format, pyright |
@@ -237,7 +239,13 @@ make web                  # terminal 2: open http://localhost:3000
 
 To open a notebook: `uv --directory backend run marimo edit ../notebooks/01_eda.py`
 
-### Optional: embed on a free GPU (Colab / Kaggle)
+### Build the FULL dataset on Kaggle (2× T4 GPUs)
+FULL (≈ 654k articles at ≥ 1,000 monthly views, 11M link edges) is built by the same Dagster pipeline on a free Kaggle GPU notebook, then installed locally:
+1. Kaggle → New Notebook → *File → Import Notebook* → [`kaggle/rabbithole_full_build.ipynb`](kaggle/rabbithole_full_build.ipynb). Accelerator **GPU T4 ×2**, Internet **on**, then *Save Version → Save & Run All*. It clones this repo, runs every asset except the Postgres load (embedding on both GPUs, fp16), and packs the result with `rabbithole pack`.
+2. Download the notebook's output (`kaggle kernels output <user>/<slug> -p ~/Downloads/rabbithole_full`).
+3. `uv --directory backend run rabbithole unpack ~/Downloads/rabbithole_full/rabbithole_full`, then `DATASET_MODE=full make load` (bulk `COPY` load into Postgres).
+
+### Optional: embed on a free GPU only (Colab / Kaggle)
 Embedding runs on CPU by default (DEV takes ~15 minutes; FULL can take hours). To use a GPU instead:
 1. Run the pipeline once. It writes the inputs to `data/export/articles_texts.parquet` and `data/export/chunks_texts.parquet`, with columns `id` and `text`.
 2. Upload them to a GPU notebook and run:
